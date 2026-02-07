@@ -60,9 +60,20 @@ Before implementing any non-trivial feature:
 
 ## Git Workflow
 
-**Branch strategy:** Main-branch flow. All work commits directly to `main`. Every commit must be deployable.
+**Branch strategy:** Feature branch + PR flow. `main` is the deploy branch — every merge to main triggers a GitHub Pages deploy.
 
-**Commit message format:** `<type>: <description>`
+### Branches
+
+- Create feature branches from `main` named `<type>/<short-description>`
+  - Examples: `feat/dungeon-grid`, `fix/encounter-gauge-reset`, `chore/add-linting`
+- Commit freely on feature branches (no need for every commit to be deployable)
+- When work is ready, open a PR to `main` using `gh pr create`
+- Squash merge PRs into `main` (one clean commit per feature)
+- Delete the feature branch after merge
+
+### Commit Message Format
+
+PR squash commits (and any direct commits to main) use: `<type>: <description>`
 
 | Prefix | Use |
 |--------|-----|
@@ -244,7 +255,7 @@ Quick reference for Claude to implement correctly. See `plans/plan.md` for detai
 - **URL:** `https://joshua-klimaszewski.github.io/blob-rpg/`
 - **Vite base path:** Set `base: '/blob-rpg/'` in `vite.config.ts`
 - **Deploy method:** GitHub Actions — build on push to `main`, deploy `dist/` to GitHub Pages
-- **Every commit to main triggers a deploy** — ensure all commits are deployable
+- **Every merge to main triggers a deploy** — PRs are squash merged, keeping main clean and deployable
 
 ---
 
@@ -260,6 +271,7 @@ Quick reference for Claude to implement correctly. See `plans/plan.md` for detai
 | Save system | localStorage (MVP) | Simple, sufficient for <5MB RPG saves. IndexedDB migration path documented. | 2026-02-07 |
 | Styling | Tailwind CSS | Utility-first for rapid iteration, easy B&W palette constraints | 2026-02-07 |
 | Build tool | Vite | Fast HMR, native TS, simple GitHub Pages deploy | 2026-02-07 |
+| Git workflow | Feature branch + PR | Clean main history, CI checks on PRs, squash merge | 2026-02-07 |
 
 ### To Decide (Pending User Interview)
 
