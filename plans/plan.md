@@ -18,14 +18,14 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey and Pok
 
 - [x] Write comprehensive CLAUDE.md (2026-02-07)
 - [x] Create master plan.md (2026-02-07)
-- [ ] Initialize Vite + React + TypeScript project
-- [ ] Configure Tailwind CSS with B&W palette
-- [ ] Set up Vitest
-- [ ] Create GitHub Actions workflow for Pages deploy
-- [ ] Set up `src/` directory structure (components, systems, stores, data, types, hooks, utils)
-- [ ] Create App shell with placeholder screens (Town, Dungeon, Combat)
-- [ ] Verify deploy to `https://joshua-klimaszewski.github.io/blob-rpg/`
-- [ ] Add Zustand with a minimal test store
+- [x] Initialize Vite + React + TypeScript project (2026-02-07)
+- [x] Configure Tailwind CSS with B&W palette (2026-02-07)
+- [x] Set up Vitest (2026-02-07)
+- [x] Create GitHub Actions workflow for Pages deploy (2026-02-07)
+- [x] Set up `src/` directory structure (components, systems, stores, data, types, hooks, utils) (2026-02-07)
+- [x] Create App shell with placeholder screens (Town, Dungeon, Combat) (2026-02-07)
+- [ ] Verify deploy to `https://joshua-klimaszewski.github.io/blob-rpg/` (pending push)
+- [x] Add Zustand with a minimal test store (2026-02-07)
 
 ### Phase 2: Core Dungeon Movement
 
@@ -354,6 +354,28 @@ How should the skill tree be displayed on mobile?
 - [x] Initial commit: `docs: add comprehensive CLAUDE.md and master plan` (2026-02-07)
 
 **Next sprint:** Phase 1 scaffold — Vite + React + TS project initialization, Tailwind config, GitHub Actions deploy pipeline.
+
+### Sprint 02 — Project Scaffold (2026-02-07)
+
+**Goal:** Get the project building, tested, and deployable with full directory structure.
+
+**Tasks:**
+- [x] Initialize Vite + React 19 + TypeScript project (2026-02-07)
+- [x] Configure Tailwind CSS v4 with B&W wireframe palette (`@theme` tokens) (2026-02-07)
+- [x] Set up Vitest with 3 passing store tests (2026-02-07)
+- [x] Create GitHub Actions deploy workflow (build → upload → deploy-pages) (2026-02-07)
+- [x] Create full `src/` directory structure per CLAUDE.md spec (2026-02-07)
+- [x] Create App shell with screen switching (Town, Dungeon, Combat placeholders) (2026-02-07)
+- [x] Add Zustand gameStore with screen state + tests (2026-02-07)
+- [x] Verify `npm run build` produces correct base path `/blob-rpg/` (2026-02-07)
+- [ ] Verify live deploy to GitHub Pages (pending push)
+
+**Notes:**
+- Used Tailwind v4 `@theme` directive (not v3 `tailwind.config.ts` `theme.extend`) for design tokens
+- Monospace font (`Courier New`) fits the wireframe aesthetic
+- Touch target minimum set as `--spacing-touch: 44px` custom token
+
+**Next sprint:** Push to deploy, verify Pages URL works, then begin Phase 2 dungeon movement.
 
 ---
 
