@@ -236,6 +236,31 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey and Pok
 
 ---
 
+### ADR-006: Feature Branch + PR Workflow
+
+**Status:** Decided (2026-02-07)
+
+**Context:** The project initially used main-branch flow (all commits direct to `main`). As the project grows and CI is added, a more structured workflow is needed. Options:
+1. Main-branch flow (current) — simple, every commit deploys
+2. Feature branch + PR flow — branches per feature, squash merge to main
+3. Gitflow — develop/release/hotfix branches (heavyweight)
+
+**Decision:** Feature branch + PR flow.
+
+**Rationale:**
+- PRs provide a natural checkpoint for CI checks (lint, test, build) before merging
+- Squash merging keeps `main` history clean (one commit per feature)
+- Feature branches allow WIP commits without breaking deploy
+- Lighter than Gitflow, appropriate for solo/small team
+- `main` remains the deploy branch — every merge triggers GitHub Pages deploy
+
+**Consequences:**
+- Slightly more overhead per change (create branch, open PR, merge)
+- Need `gh` CLI for PR creation (already available)
+- Branch naming convention: `<type>/<short-description>` (e.g., `feat/dungeon-grid`)
+
+---
+
 ## Decisions Pending User Interview
 
 These decisions have been identified but need user input. Options are preserved here for discussion.
@@ -376,6 +401,24 @@ How should the skill tree be displayed on mobile?
 - Touch target minimum set as `--spacing-touch: 44px` custom token
 
 **Next sprint:** Push to deploy, verify Pages URL works, then begin Phase 2 dungeon movement.
+
+### Sprint 03 — Dev Process Upgrades (2026-02-07)
+
+**Goal:** Switch to feature branch + PR workflow and add agent-browser for visual testing.
+
+**Tasks:**
+- [x] Update CLAUDE.md Git Workflow section to feature branch + PR flow (2026-02-07)
+- [x] Add ADR-006 for workflow change (2026-02-07)
+- [x] Install `agent-browser` globally (v0.9.1) + Chromium (2026-02-07)
+- [x] Create `/agent-browser` custom slash command (`.claude/commands/agent-browser.md`) (2026-02-07)
+- [x] Update MEMORY.md to reflect new workflow (2026-02-07)
+- [x] Dogfood: commit on `chore/dev-process-upgrades` branch, open PR to main (2026-02-07)
+
+**Notes:**
+- First PR using the new workflow — dogfooding the process
+- `agent-browser` v0.9.1 uses Playwright Chromium under the hood
+
+**Next sprint:** Phase 2 — begin dungeon movement system.
 
 ---
 
