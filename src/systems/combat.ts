@@ -14,6 +14,13 @@ import type {
   BindType,
   CombatEventUnion,
   DamageEvent,
+  DisplacementDirection,
+  DisplacementEffect,
+  HazardType,
+  DisplacementEvent,
+  HazardTriggeredEvent,
+  HazardPlacedEvent,
+  PoisonData,
 } from '../types/combat';
 
 // ============================================================================
@@ -437,6 +444,210 @@ export function executeAttack(
       killed: result.killed,
     };
     events.push(damageEvent);
+  }
+
+  return { state: newState, events };
+}
+
+// ============================================================================
+// Displacement & Trap Tiles
+// ============================================================================
+
+/**
+ * Calculate the target position after displacement
+ * Clamps to grid bounds (0-2, 0-2)
+ */
+export function calculateDisplacementTarget(
+  from: GridPosition,
+  direction: DisplacementDirection,
+  distance: number
+): GridPosition {
+  const [row, col] = from;
+  let newRow = row;
+  let newCol = col;
+
+  switch (direction) {
+    case 'push': // Push back (increase row)
+      newRow = row + distance;
+      break;
+    case 'pull': // Pull forward (decrease row)
+      newRow = row - distance;
+      break;
+    case 'left': // Move left (decrease col)
+      newCol = col - distance;
+      break;
+    case 'right': // Move right (increase col)
+      newCol = col + distance;
+      break;
+  }
+
+  // Clamp to grid bounds
+  newRow = Math.max(0, Math.min(2, newRow));
+  newCol = Math.max(0, Math.min(2, newCol));
+
+  return [newRow, newCol];
+}
+
+/**
+ * Place a hazard on a tile (returns new grid)
+ */
+export function placeHazard(
+  grid: BattleTile[][],
+  position: GridPosition,
+  hazard: HazardType
+): BattleTile[][] {
+  if (!isValidPosition(position)) return grid;
+
+  const [row, col] = position;
+  return grid.map((r, rowIdx) =>
+    r.map((tile, colIdx) => {
+      if (rowIdx === row && colIdx === col) {
+        return { ...tile, hazard };
+      }
+      return tile;
+    })
+  );
+}
+
+/**
+ * Trigger hazard effects on an entity
+ * Returns updated entity + events
+ */
+export function triggerHazard(
+  entity: CombatEntity,
+  hazard: HazardType,
+  rng: RNG = defaultRNG
+): { entity: CombatEntity; events: CombatEventUnion[] } {
+  const events: CombatEventUnion[] = [];
+
+  switch (hazard) {
+    case 'spike': {
+      // Fixed 10 damage
+      const damagedEntity = applyDamage(entity, 10);
+      const damageEvent: DamageEvent = {
+        type: 'damage',
+        timestamp: Date.now(),
+        targetId: entity.id,
+        damage: 10,
+        isCrit: false,
+        killed: damagedEntity.hp === 0,
+      };
+      events.push(damageEvent);
+      return { entity: damagedEntity, events };
+    }
+
+    case 'web': {
+      // Apply leg bind (2 turns)
+      const boundEntity: CombatEntity = {
+        ...entity,
+        binds: {
+          ...entity.binds,
+          leg: Math.max(entity.binds.leg, 2), // Extend if already bound
+        },
+      };
+      // Bind event will be added by applyBind in future commits
+      return { entity: boundEntity, events };
+    }
+
+    case 'fire': {
+      // Apply poison (5 dmg/turn, 3 turns)
+      const poisonData: PoisonData = {
+        type: 'poison',
+        damagePerTurn: 5,
+        turnsRemaining: 3,
+      };
+      const poisonedEntity: CombatEntity = {
+        ...entity,
+        ailments: {
+          ...entity.ailments,
+          poison: poisonData,
+        },
+      };
+      // Ailment event will be added by applyAilment in future commits
+      return { entity: poisonedEntity, events };
+    }
+
+    default:
+      return { entity, events };
+  }
+}
+
+/** Result of displacement */
+export interface DisplacementResult {
+  state: CombatState;
+  events: CombatEventUnion[];
+}
+
+/**
+ * Displace an entity in a direction
+ * Moves entity, triggers hazard if present at destination
+ */
+export function displaceEntity(
+  state: CombatState,
+  entityId: string,
+  effect: DisplacementEffect,
+  rng: RNG = defaultRNG
+): DisplacementResult {
+  const entity = findEntity(state, entityId);
+  if (!entity || !isAlive(entity)) {
+    return { state, events: [] };
+  }
+
+  const currentPos = getEntityPosition(state.grid, entityId);
+  if (!currentPos) {
+    return { state, events: [] };
+  }
+
+  // Calculate new position
+  const newPos = calculateDisplacementTarget(currentPos, effect.direction, effect.distance);
+
+  // If position doesn't change (hit boundary), no displacement
+  if (currentPos[0] === newPos[0] && currentPos[1] === newPos[1]) {
+    return { state, events: [] };
+  }
+
+  const events: CombatEventUnion[] = [];
+
+  // Move entity on grid
+  const newGrid = moveEntity(state.grid, entityId, newPos);
+
+  // Update entity position
+  const movedEntity: CombatEntity = {
+    ...entity,
+    position: newPos,
+  };
+
+  let newState: CombatState = {
+    ...state,
+    grid: newGrid,
+  };
+  newState = updateEntity(newState, entityId, movedEntity);
+
+  // Create displacement event
+  const displacementEvent: DisplacementEvent = {
+    type: 'displacement',
+    timestamp: Date.now(),
+    entityId,
+    from: currentPos,
+    to: newPos,
+  };
+  events.push(displacementEvent);
+
+  // Check for hazard at new position
+  const tile = getTile(newGrid, newPos);
+  if (tile?.hazard) {
+    const hazardResult = triggerHazard(movedEntity, tile.hazard, rng);
+    newState = updateEntity(newState, entityId, hazardResult.entity);
+
+    const hazardEvent: HazardTriggeredEvent = {
+      type: 'hazard-triggered',
+      timestamp: Date.now(),
+      entityId,
+      hazard: tile.hazard,
+      position: newPos,
+    };
+    events.push(hazardEvent);
+    events.push(...hazardResult.events);
   }
 
   return { state: newState, events };

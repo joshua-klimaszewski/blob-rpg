@@ -43,6 +43,10 @@ import {
   calculateDamage,
   applyDamage,
   executeAttack,
+  calculateDisplacementTarget,
+  placeHazard,
+  triggerHazard,
+  displaceEntity,
   type RNG,
 } from './combat';
 
@@ -953,5 +957,234 @@ describe('executeAttack', () => {
 
     const updatedEnemy = findEntity(result.state, 'enemy-1')!;
     expect(updatedEnemy.hp).toBe(0);
+  });
+});
+
+// ============================================================================
+// Displacement Tests
+// ============================================================================
+
+describe('calculateDisplacementTarget', () => {
+  it('should displace push direction (increase row)', () => {
+    const result = calculateDisplacementTarget([1, 1], 'push', 1);
+    expect(result).toEqual([2, 1]);
+  });
+
+  it('should displace pull direction (decrease row)', () => {
+    const result = calculateDisplacementTarget([1, 1], 'pull', 1);
+    expect(result).toEqual([0, 1]);
+  });
+
+  it('should displace left direction (decrease col)', () => {
+    const result = calculateDisplacementTarget([1, 1], 'left', 1);
+    expect(result).toEqual([1, 0]);
+  });
+
+  it('should displace right direction (increase col)', () => {
+    const result = calculateDisplacementTarget([1, 1], 'right', 1);
+    expect(result).toEqual([1, 2]);
+  });
+
+  it('should clamp to minimum bounds (0, 0)', () => {
+    expect(calculateDisplacementTarget([0, 0], 'pull', 2)).toEqual([0, 0]);
+    expect(calculateDisplacementTarget([0, 0], 'left', 2)).toEqual([0, 0]);
+  });
+
+  it('should clamp to maximum bounds (2, 2)', () => {
+    expect(calculateDisplacementTarget([2, 2], 'push', 2)).toEqual([2, 2]);
+    expect(calculateDisplacementTarget([2, 2], 'right', 2)).toEqual([2, 2]);
+  });
+
+  it('should handle distance > 1', () => {
+    expect(calculateDisplacementTarget([0, 0], 'push', 2)).toEqual([2, 0]);
+    expect(calculateDisplacementTarget([2, 2], 'pull', 2)).toEqual([0, 2]);
+  });
+});
+
+describe('placeHazard', () => {
+  it('should place hazard on tile', () => {
+    const grid = createEmptyGrid();
+    const newGrid = placeHazard(grid, [1, 1], 'spike');
+
+    const tile = getTile(newGrid, [1, 1]);
+    expect(tile?.hazard).toBe('spike');
+  });
+
+  it('should not mutate original grid', () => {
+    const grid = createEmptyGrid();
+    const newGrid = placeHazard(grid, [1, 1], 'fire');
+
+    const originalTile = getTile(grid, [1, 1]);
+    expect(originalTile?.hazard).toBeNull();
+  });
+
+  it('should not modify grid for out-of-bounds position', () => {
+    const grid = createEmptyGrid();
+    const newGrid = placeHazard(grid, [5, 5], 'web');
+
+    expect(newGrid).toBe(grid);
+  });
+
+  it('should replace existing hazard', () => {
+    const grid = createEmptyGrid();
+    let newGrid = placeHazard(grid, [1, 1], 'spike');
+    newGrid = placeHazard(newGrid, [1, 1], 'fire');
+
+    const tile = getTile(newGrid, [1, 1]);
+    expect(tile?.hazard).toBe('fire');
+  });
+});
+
+describe('triggerHazard', () => {
+  it('should trigger spike hazard (10 fixed damage)', () => {
+    const entity = createTestEntity({ hp: 50 });
+    const result = triggerHazard(entity, 'spike');
+
+    expect(result.entity.hp).toBe(40);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('damage');
+
+    const damageEvent = result.events[0] as any;
+    expect(damageEvent.damage).toBe(10);
+  });
+
+  it('should trigger web hazard (leg bind 2 turns)', () => {
+    const entity = createTestEntity({ binds: { head: 0, arm: 0, leg: 0 } });
+    const result = triggerHazard(entity, 'web');
+
+    expect(result.entity.binds.leg).toBe(2);
+  });
+
+  it('should trigger fire hazard (poison 5 dmg/turn, 3 turns)', () => {
+    const entity = createTestEntity({ ailments: createDefaultAilments() });
+    const result = triggerHazard(entity, 'fire');
+
+    expect(result.entity.ailments.poison).toBeDefined();
+    expect(result.entity.ailments.poison?.damagePerTurn).toBe(5);
+    expect(result.entity.ailments.poison?.turnsRemaining).toBe(3);
+  });
+
+  it('should extend leg bind if already bound', () => {
+    const entity = createTestEntity({ binds: { head: 0, arm: 0, leg: 1 } });
+    const result = triggerHazard(entity, 'web');
+
+    expect(result.entity.binds.leg).toBe(2); // Extended to 2, not added
+  });
+
+  it('should set killed flag if spike damage kills', () => {
+    const entity = createTestEntity({ hp: 5 });
+    const result = triggerHazard(entity, 'spike');
+
+    expect(result.entity.hp).toBe(0);
+
+    const damageEvent = result.events[0] as any;
+    expect(damageEvent.killed).toBe(true);
+  });
+});
+
+describe('displaceEntity', () => {
+  it('should displace entity to new position', () => {
+    const entity = createTestEntity({ id: 'enemy-1', position: [1, 1] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({ enemies: [entity], grid });
+
+    const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('displacement');
+
+    const displacementEvent = result.events[0] as any;
+    expect(displacementEvent.from).toEqual([1, 1]);
+    expect(displacementEvent.to).toEqual([2, 1]);
+
+    // Entity should be at new position on grid
+    expect(getEntitiesAtTile(result.state.grid, [2, 1])).toContain('enemy-1');
+    expect(getEntitiesAtTile(result.state.grid, [1, 1])).not.toContain('enemy-1');
+
+    // Entity position should be updated
+    const updatedEntity = findEntity(result.state, 'enemy-1')!;
+    expect(updatedEntity.position).toEqual([2, 1]);
+  });
+
+  it('should not displace if at boundary', () => {
+    const entity = createTestEntity({ id: 'enemy-1', position: [2, 1] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [2, 1]);
+
+    const state = createTestState({ enemies: [entity], grid });
+
+    const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
+
+    expect(result.events).toHaveLength(0);
+    expect(getEntitiesAtTile(result.state.grid, [2, 1])).toContain('enemy-1');
+  });
+
+  it('should trigger hazard at destination', () => {
+    const entity = createTestEntity({ id: 'enemy-1', hp: 50, position: [1, 1] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+    grid = placeHazard(grid, [2, 1], 'spike');
+
+    const state = createTestState({ enemies: [entity], grid });
+
+    const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
+
+    // Should have displacement event + hazard triggered + damage event
+    expect(result.events.length).toBeGreaterThanOrEqual(2);
+    expect(result.events[0].type).toBe('displacement');
+    expect(result.events[1].type).toBe('hazard-triggered');
+
+    // Entity should take spike damage
+    const updatedEntity = findEntity(result.state, 'enemy-1')!;
+    expect(updatedEntity.hp).toBe(40); // 50 - 10 from spike
+  });
+
+  it('should allow multiple entities on same tile after displacement', () => {
+    const entity1 = createTestEntity({ id: 'enemy-1', position: [1, 0] });
+    const entity2 = createTestEntity({ id: 'enemy-2', position: [1, 1] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 0]);
+    grid = addEntityToTile(grid, 'enemy-2', [1, 1]);
+
+    const state = createTestState({ enemies: [entity1, entity2], grid });
+
+    // Push enemy-1 right onto enemy-2's tile
+    const result = displaceEntity(state, 'enemy-1', { direction: 'right', distance: 1 });
+
+    // Both entities should be on [1, 1]
+    const entitiesAtTile = getEntitiesAtTile(result.state.grid, [1, 1]);
+    expect(entitiesAtTile).toContain('enemy-1');
+    expect(entitiesAtTile).toContain('enemy-2');
+    expect(entitiesAtTile).toHaveLength(2);
+  });
+
+  it('should return no events if entity is dead', () => {
+    const entity = createTestEntity({ id: 'enemy-1', hp: 0, position: [1, 1] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({ enemies: [entity], grid });
+
+    const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
+
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('should return no events if entity not on grid', () => {
+    const entity = createTestEntity({ id: 'enemy-1', position: [1, 1] });
+    const grid = createEmptyGrid(); // No entity added to grid
+
+    const state = createTestState({ enemies: [entity], grid });
+
+    const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
+
+    expect(result.events).toHaveLength(0);
   });
 });
