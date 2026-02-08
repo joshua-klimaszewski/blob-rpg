@@ -2,11 +2,15 @@ import { useGameStore } from './stores/gameStore'
 import { TownScreen } from './components/town/TownScreen'
 import { DungeonScreen } from './components/dungeon/DungeonScreen'
 import { CombatScreen } from './components/combat/CombatScreen'
+import { CharacterSheet } from './components/character/CharacterSheet'
+import { PartyFormation } from './components/character/PartyFormation'
 
 const screens = {
   town: TownScreen,
   dungeon: DungeonScreen,
   combat: CombatScreen,
+  character: CharacterSheet,
+  'party-formation': PartyFormation,
 } as const
 
 export function App() {
