@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import type { PartyMemberState, CombatEntity } from '../types/combat';
 import type { EquipmentSlot } from '../types/character';
 import { getClass, getSkill } from '../data/classes/index';
+import { getEquipment } from '../data/items/index';
 import {
   createPartyMember,
   processLevelUps,
@@ -110,10 +111,14 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         const newEquipment = { ...member.equipment, [slot]: itemId };
         const updatedMember = { ...member, equipment: newEquipment };
 
-        // Recalculate stats with new equipment
-        // Equipment lookup will be wired when equipment data is available
+        // Resolve equipped items to definitions for stat recalc
+        const equippedItems = Object.values(newEquipment)
+          .filter((id): id is string => id !== null)
+          .map((id) => getEquipment(id))
+          .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
+
         const classData = getClass(member.classId);
-        return recalculatePartyMember(updatedMember, classData, []);
+        return recalculatePartyMember(updatedMember, classData, equippedItems);
       });
 
       return { roster: newRoster };
