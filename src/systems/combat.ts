@@ -1214,6 +1214,82 @@ export function executeAction(
 }
 
 /**
+ * Execute an enemy's turn (MVP: basic attack on random alive party member)
+ * Party members aren't on the grid, so enemies attack them directly.
+ */
+export function executeEnemyTurn(
+  state: CombatState,
+  actorId: string,
+  rng: RNG = defaultRNG
+): ActionResult {
+  const actor = findEntity(state, actorId);
+  if (!actor || !isAlive(actor) || actor.isParty) {
+    return { state, events: [] };
+  }
+
+  // Pick random alive party member
+  const aliveParty = getAliveParty(state);
+  if (aliveParty.length === 0) {
+    return { state, events: [] };
+  }
+
+  const targetIndex = Math.floor(rng() * aliveParty.length);
+  const target = aliveParty[targetIndex];
+
+  // Calculate damage (multiplier 1.0 for basic attack)
+  const result = calculateDamage(actor, target, 1.0, 0, rng);
+
+  // Apply damage
+  const damagedTarget = applyDamage(target, result.damage);
+  let newState = updateEntity(state, target.id, damagedTarget);
+
+  const events: CombatEventUnion[] = [];
+
+  const damageEvent: DamageEvent = {
+    type: 'damage',
+    timestamp: Date.now(),
+    targetId: target.id,
+    damage: result.damage,
+    isCrit: result.isCrit,
+    killed: result.killed,
+  };
+  events.push(damageEvent);
+
+  // Mark actor as having acted
+  const newTurnOrder = newState.turnOrder.map((entry) =>
+    entry.entityId === actorId ? { ...entry, hasActed: true } : entry
+  );
+  newState = { ...newState, turnOrder: newTurnOrder };
+
+  // Check victory/defeat
+  const { victory, defeat } = checkVictoryDefeat(newState);
+
+  if (defeat) {
+    const defeatEvent: DefeatEvent = {
+      type: 'defeat',
+      timestamp: Date.now(),
+    };
+    return {
+      state: { ...newState, phase: 'defeat' },
+      events: [...events, defeatEvent],
+    };
+  }
+
+  if (victory) {
+    const victoryEvent: VictoryEvent = {
+      type: 'victory',
+      timestamp: Date.now(),
+    };
+    return {
+      state: { ...newState, phase: 'victory' },
+      events: [...events, victoryEvent],
+    };
+  }
+
+  return { state: newState, events };
+}
+
+/**
  * Calculate combat rewards after victory
  */
 export function calculateRewards(state: CombatState): CombatRewards {

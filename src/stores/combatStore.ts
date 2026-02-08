@@ -16,6 +16,8 @@ import type {
 import {
   initializeCombat,
   executeAction,
+  executeEnemyTurn,
+  advanceTurn,
   calculateRewards,
   defaultRNG,
 } from '../systems/combat';
@@ -40,11 +42,35 @@ interface CombatStore {
   /** Execute a combat action */
   selectAction: (action: Action) => void;
 
+  /** Process an enemy's turn automatically */
+  processEnemyTurn: () => void;
+
+  /** Advance to the next actor in turn order */
+  advanceToNext: () => void;
+
   /** End combat and return to previous screen */
   endCombat: () => void;
 
   /** Clear last events (after UI has processed them) */
   clearEvents: () => void;
+}
+
+function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
+  if (state.phase === 'victory') {
+    const rewards = calculateRewards(state);
+    useCombatStore.setState({ rewards });
+
+    setTimeout(() => {
+      get().endCombat();
+    }, 2000);
+  }
+
+  if (state.phase === 'defeat') {
+    setTimeout(() => {
+      get().endCombat();
+      useGameStore.getState().setScreen('town');
+    }, 2000);
+  }
 }
 
 export const useCombatStore = create<CombatStore>((set, get) => ({
@@ -71,34 +97,39 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const { combat } = get();
     if (!combat) return;
 
-    // Execute action in combat system
     const result = executeAction(combat, action, defaultRNG);
 
-    // Update combat state
     set({
       combat: result.state,
       lastEvents: result.events,
     });
 
-    // Handle phase transitions
-    if (result.state.phase === 'victory') {
-      const rewards = calculateRewards(result.state);
-      set({ rewards });
+    handlePhaseTransition(get, result.state);
+  },
 
-      // Return to dungeon after victory
-      setTimeout(() => {
-        get().endCombat();
-        // TODO: Apply rewards to party (Phase 4)
-      }, 2000); // Give UI time to show victory
-    }
+  processEnemyTurn: () => {
+    const { combat } = get();
+    if (!combat || combat.phase !== 'active') return;
 
-    if (result.state.phase === 'defeat') {
-      // Return to town after defeat
-      setTimeout(() => {
-        get().endCombat();
-        useGameStore.getState().setScreen('town');
-      }, 2000); // Give UI time to show defeat
-    }
+    const currentEntry = combat.turnOrder[combat.currentActorIndex];
+    if (!currentEntry) return;
+
+    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG);
+
+    set({
+      combat: result.state,
+      lastEvents: result.events,
+    });
+
+    handlePhaseTransition(get, result.state);
+  },
+
+  advanceToNext: () => {
+    const { combat } = get();
+    if (!combat || combat.phase !== 'active') return;
+
+    const newState = advanceTurn(combat);
+    set({ combat: newState });
   },
 
   endCombat: () => {
