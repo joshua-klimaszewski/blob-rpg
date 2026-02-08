@@ -56,6 +56,28 @@ Before implementing any non-trivial feature:
 - Update `plans/plan.md` after every cycle — mark completed items, add new discoveries
 - If a cycle reveals new decisions needed, document them as pending interviews
 
+### Parallel Agent Work (Git Worktrees)
+
+When multiple Claude agents work on the same branch simultaneously, they **must** use git worktrees to avoid conflicts:
+
+```bash
+# From the main repo, create a worktree for your work
+git worktree add ../blob-rpg-<your-task> feat/combat-system
+
+# Example: agent working on dungeon polish while another does combat UI
+git worktree add ../blob-rpg-dungeon-polish feat/combat-system
+```
+
+**Rules for parallel agents:**
+1. **Always create a worktree** if another agent is already working in the main repo directory. Ask the user if unsure.
+2. **Name the worktree directory** descriptively: `blob-rpg-<short-task-name>`
+3. **Run your own dev server** on a unique port (`npx vite --port 5175`, `5176`, etc.) to avoid conflicts.
+4. **Use `--session <name>`** with agent-browser to isolate browser sessions.
+5. **Coordinate commits** — don't both commit at the same time. One agent commits first, the other pulls/rebases before committing.
+6. **Clean up** — when done, the user or agent should remove the worktree: `git worktree remove ../blob-rpg-<name>`
+
+This prevents file conflicts, dev server port collisions, and agent-browser session interference.
+
 ---
 
 ## Git Workflow

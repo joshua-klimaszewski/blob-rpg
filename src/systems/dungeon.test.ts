@@ -5,6 +5,10 @@ import {
   positionsEqual,
   oppositeDirection,
   distance,
+  positionKey,
+  computeVisibleTiles,
+  updateExploredTiles,
+  getTileVisibility,
   getTile,
   isWalkable,
   isWallBlocked,
@@ -56,6 +60,7 @@ function makeState(overrides?: Partial<DungeonState>): DungeonState {
     encounterGauge: { value: 0, threshold: 100 },
     facing: 'north',
     processing: false,
+    exploredTiles: [],
     ...overrides,
   }
 }
@@ -109,6 +114,132 @@ describe('distance', () => {
 
   it('returns manhattan distance', () => {
     expect(distance({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(7)
+  })
+})
+
+// ---- Fog of war ----
+
+describe('positionKey', () => {
+  it('converts position to "x,y" string', () => {
+    expect(positionKey({ x: 3, y: 7 })).toBe('3,7')
+  })
+})
+
+describe('computeVisibleTiles', () => {
+  it('reveals tiles within radius on open floor', () => {
+    // 7x7 all-floor grid, player at center (3,3)
+    const floor = makeFloor({
+      width: 7,
+      height: 7,
+      tiles: Array.from({ length: 7 }, () =>
+        Array.from({ length: 7 }, () => ({ type: 'floor' as const })),
+      ),
+    })
+    const visible = computeVisibleTiles({ x: 3, y: 3 }, floor, 3)
+    // Player tile should be visible
+    expect(visible.has('3,3')).toBe(true)
+    // Tiles at radius 3 should be visible
+    expect(visible.has('3,0')).toBe(true) // 3 north
+    expect(visible.has('6,3')).toBe(true) // 3 east
+    // Tiles at radius 4 should NOT be visible
+    expect(visible.has('3,7')).toBe(false) // out of bounds anyway
+  })
+
+  it('stops at walls but includes wall faces', () => {
+    // 5x1 corridor with wall at x=2
+    const floor = makeFloor({
+      width: 5,
+      height: 1,
+      tiles: [[
+        { type: 'floor' },
+        { type: 'floor' },
+        { type: 'wall' },
+        { type: 'floor' },
+        { type: 'floor' },
+      ]],
+    })
+    const visible = computeVisibleTiles({ x: 0, y: 0 }, floor, 3)
+    expect(visible.has('0,0')).toBe(true)
+    expect(visible.has('1,0')).toBe(true)
+    expect(visible.has('2,0')).toBe(true) // wall face is visible
+    expect(visible.has('3,0')).toBe(false) // behind wall
+    expect(visible.has('4,0')).toBe(false) // behind wall
+  })
+
+  it('respects directional walls', () => {
+    // 3x1 corridor, tile at x=1 has east wall
+    const floor = makeFloor({
+      width: 3,
+      height: 1,
+      tiles: [[
+        { type: 'floor' },
+        { type: 'floor', walls: ['east'] },
+        { type: 'floor' },
+      ]],
+    })
+    const visible = computeVisibleTiles({ x: 0, y: 0 }, floor, 3)
+    expect(visible.has('0,0')).toBe(true)
+    expect(visible.has('1,0')).toBe(true)
+    expect(visible.has('2,0')).toBe(false) // blocked by directional wall
+  })
+
+  it('does not include out-of-bounds tiles', () => {
+    const floor = makeFloor() // 3x3
+    const visible = computeVisibleTiles({ x: 0, y: 0 }, floor, 3)
+    expect(visible.has('-1,0')).toBe(false)
+    expect(visible.has('0,-1')).toBe(false)
+  })
+})
+
+describe('updateExploredTiles', () => {
+  it('merges new visible tiles into explored', () => {
+    const current = ['0,0', '1,0']
+    const newVisible = new Set(['1,0', '2,0', '3,0'])
+    const result = updateExploredTiles(current, newVisible)
+    expect(result).toContain('0,0')
+    expect(result).toContain('1,0')
+    expect(result).toContain('2,0')
+    expect(result).toContain('3,0')
+  })
+
+  it('deduplicates — does not add tiles already explored', () => {
+    const current = ['0,0', '1,0']
+    const newVisible = new Set(['0,0', '1,0'])
+    const result = updateExploredTiles(current, newVisible)
+    expect(result).toBe(current) // same reference, nothing changed
+  })
+
+  it('returns same reference when nothing new', () => {
+    const current = ['0,0', '1,0', '2,0']
+    const newVisible = new Set(['0,0', '1,0'])
+    const result = updateExploredTiles(current, newVisible)
+    expect(result).toBe(current)
+  })
+})
+
+describe('getTileVisibility', () => {
+  it('returns visible when tile is in visible set', () => {
+    const visible = new Set(['1,1'])
+    const explored = new Set(['1,1'])
+    expect(getTileVisibility(1, 1, visible, explored)).toBe('visible')
+  })
+
+  it('returns explored when tile is only in explored set', () => {
+    const visible = new Set<string>()
+    const explored = new Set(['1,1'])
+    expect(getTileVisibility(1, 1, visible, explored)).toBe('explored')
+  })
+
+  it('returns hidden when tile is in neither set', () => {
+    const visible = new Set<string>()
+    const explored = new Set<string>()
+    expect(getTileVisibility(1, 1, visible, explored)).toBe('hidden')
+  })
+
+  it('visible takes priority over explored', () => {
+    const visible = new Set(['2,3'])
+    const explored = new Set(['2,3'])
+    expect(getTileVisibility(2, 3, visible, explored)).toBe('visible')
   })
 })
 
@@ -617,5 +748,7 @@ describe('initializeDungeonState', () => {
     expect(state.encounterGauge.value).toBe(0)
     expect(state.facing).toBe('north')
     expect(state.processing).toBe(false)
+    expect(state.exploredTiles.length).toBeGreaterThan(0)
+    expect(state.exploredTiles).toContain(positionKey(floor.playerStart))
   })
 })

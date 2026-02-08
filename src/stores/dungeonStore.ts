@@ -1,8 +1,10 @@
-import { create } from 'zustand'
-import type { Direction, DungeonEvent, DungeonState, FloorData } from '../types/dungeon'
-import { initializeDungeonState, processTurn } from '../systems/dungeon'
-import { getFloor } from '../data/dungeons'
-import { useGameStore } from './gameStore'
+import { create } from 'zustand';
+import type { Direction, DungeonEvent, DungeonState, FloorData } from '../types/dungeon';
+import { initializeDungeonState, processTurn } from '../systems/dungeon';
+import { getFloor } from '../data/dungeons';
+import { useGameStore } from './gameStore';
+import { useCombatStore } from './combatStore';
+import { createRandomEncounter, createFOEEncounter } from '../data/encounters';
 
 interface DungeonStore {
   dungeon: DungeonState | null
@@ -35,14 +37,21 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
     if (!dungeon || !floor) return
     if (dungeon.processing) return
 
-    const result = processTurn(dungeon, floor, dir)
-    set({ dungeon: result.state, lastEvents: result.events })
+    const result = processTurn(dungeon, floor, dir);
+    set({ dungeon: result.state, lastEvents: result.events });
 
-    // Handle events that trigger screen transitions
+    // Handle events that trigger combat
     for (const event of result.events) {
-      if (event.type === 'foe-collision' || event.type === 'random-encounter') {
-        useGameStore.getState().setScreen('combat')
-        return
+      if (event.type === 'random-encounter') {
+        const encounter = createRandomEncounter();
+        useCombatStore.getState().startCombat(encounter);
+        return;
+      }
+
+      if (event.type === 'foe-collision') {
+        const encounter = createFOEEncounter();
+        useCombatStore.getState().startCombat(encounter);
+        return;
       }
     }
   },

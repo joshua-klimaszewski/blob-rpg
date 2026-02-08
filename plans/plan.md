@@ -31,44 +31,57 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 > Walk a grid, encounter gauge, FOEs.
 
-- [ ] Define dungeon floor data format (tiles, walls, exits, FOE spawns, checkpoints)
-- [ ] Build dungeon grid renderer (CSS Grid + tile components)
-- [ ] Implement player position + movement (swipe gestures + keyboard arrows)
-- [ ] Turn system: player moves → FOEs move → encounter gauge ticks
-- [ ] Encounter gauge component + logic (step-based fill, green→yellow→red, threshold trigger)
-- [ ] FOE entities with patrol movement pattern
-- [ ] FOE collision → transition to combat screen
-- [ ] Dungeon HUD (floor number, encounter gauge, party HP summary)
-- [ ] Shortcut/checkpoint mechanic (one-way paths, warp to town)
-- [ ] First test floor (handcrafted, ~15x15 grid with corridors + rooms)
+- [x] Define dungeon floor data format (tiles, walls, exits, FOE spawns, checkpoints) (2026-02-08)
+- [x] Build dungeon grid renderer (CSS Grid + tile components) (2026-02-08)
+- [x] Implement player position + movement (swipe gestures + keyboard arrows) (2026-02-08)
+- [x] Turn system: player moves → FOEs move → encounter gauge ticks (2026-02-08)
+- [x] Encounter gauge component + logic (step-based fill, green→yellow→red, threshold trigger) (2026-02-08)
+- [x] FOE entities with patrol movement pattern (2026-02-08)
+- [x] FOE collision → transition to combat screen (2026-02-08)
+- [x] Dungeon HUD (floor number, encounter gauge, party HP summary) (2026-02-08)
+- [x] Shortcut/checkpoint mechanic (one-way paths, warp to town) (2026-02-08)
+- [x] First test floor (handcrafted, ~15x15 grid with corridors + rooms) (2026-02-08)
 
 ### Phase 3: Combat System (3x3 Grid + Bind/Shutdown)
 
 > Full combat with displacement combos and bind system.
 
 **3a — Combat Foundation:**
-- [ ] 3x3 enemy grid state model (array of entities per tile for stacking)
-- [ ] Grid renderer (tap to target tiles)
-- [ ] Party display (4 characters in a list with HP/TP bars)
-- [ ] Turn order (speed-based timeline, visible to player)
-- [ ] Basic actions: Attack (target a tile), Defend, Item, Flee
-- [ ] Damage formula (STR, DEF, variance, tile position modifier)
-- [ ] Combat state machine (useReducer-based)
-- [ ] Combat rewards (XP, material drops) and victory/defeat transitions
-- [ ] Party wipe handling (return to town, penalties)
+- [x] 3x3 enemy grid state model (array of entities per tile for stacking) (2026-02-08)
+- [x] Party display (4 characters in a list with HP/TP bars) (2026-02-08)
+- [x] Turn order (speed-based timeline, AGI-sorted) (2026-02-08)
+- [x] Basic actions: Attack (target a tile), Defend, Flee (2026-02-08)
+- [x] Damage formula (STR/VIT, variance, crit, combo multiplier) (2026-02-08)
+- [x] Combat state machine (Zustand + pure TS systems) (2026-02-08)
+- [x] Combat rewards (XP calculation) and victory/defeat transitions (2026-02-08)
+- [x] Party wipe handling (return to town) (2026-02-08)
+- ~~Grid renderer (tap to target tiles)~~ — deferred to Phase 3b UI polish
+- ~~Item action~~ — deferred to Phase 5 (inventory system)
 
 **3b — Displacement + Combos:**
-- [ ] Displacement skills with direction vectors: Push (back), Pull (forward), Lateral (left/right)
-- [ ] Stacking mechanic: multiple entities per tile, AOE hits all stacked
-- [ ] Combo multiplier: consecutive hits increase damage (BaseDmg * (1 + combo * 0.1))
-- [ ] Trap tiles on the enemy grid (spike = damage, web = leg bind)
+- [x] Displacement mechanics with direction vectors: Push (back), Pull (forward), Left, Right (2026-02-08)
+- [x] Stacking mechanic: multiple entities per tile, AOE hits all stacked (2026-02-08)
+- [x] Combo multiplier: consecutive hits increase damage (BaseDmg * (1 + combo * 0.1)) (2026-02-08)
+- [x] Trap tiles on the enemy grid (spike = 10 dmg, web = leg bind, fire = poison) (2026-02-08)
 
 **3c — Bind/Shutdown:**
-- [ ] Bind status effects: Head (disables spells/INT attacks), Arm (disables physicals, -50% damage), Leg (prevents escape/evasion, disables speed skills)
-- [ ] Bind duration (turns-based) + resistance scaling
-- [ ] Ailments: Poison (flat DoT), Paralyze (% turn loss), Sleep (skip + 1.5x first hit), Blind (accuracy drop)
-- [ ] Conditional skill logic: "if target has N binds, deal Nx damage"
-- [ ] Enemy AI: weighted random action selection, respects own binds (bound arm = can't use physical)
+- [x] Bind status effects: Head (disables INT attacks), Arm (50% damage reduction), Leg (prevents flee) (2026-02-08)
+- [x] Bind duration (turns-based) + resistance scaling (duration reduction, resistance buildup) (2026-02-08)
+- [x] Ailments: Poison (flat DoT), Paralyze (% turn skip), Sleep (turn skip + removed on hit), Blind (accuracy penalty) (2026-02-08)
+- ~~Conditional skill logic: "if target has N binds, deal Nx damage"~~ — deferred to Phase 4 (skill system)
+- ~~Enemy AI: weighted random action selection~~ — deferred to Phase 4 (basic random AI for MVP)
+
+**Phase 3b UI Polish:**
+- [x] 3x3 grid renderer with tap-to-target interaction (2026-02-08)
+- [x] Action menu UI (Attack/Defend/Flee buttons with disable states) (2026-02-08)
+- [x] Enemy AI auto-turn processing (random party member targeting) (2026-02-08)
+- [x] Turn order timeline component (2026-02-08)
+- [x] Combat HUD (round counter, combo display, flee status) (2026-02-08)
+- [x] Damage number popups and animations (2026-02-08)
+- [x] Bind/ailment status icon display (2026-02-08)
+- [x] Combat event feedback system (useCombatEvents hook) (2026-02-08)
+- [x] Victory/Defeat overlay animations (2026-02-08)
+- ~~Displacement animation effects~~ — deferred to future polish pass (highlight-only for now)
 
 ### Phase 4: Character & Class System
 
@@ -582,6 +595,243 @@ These systems were researched but intentionally excluded from MVP scope:
 - 12 research documents preserved in `research/` directory
 
 **Next sprint:** Phase 2 — begin dungeon movement system implementation.
+
+### Sprint 05 — Phase 2: Core Dungeon Movement (2026-02-08)
+
+**Goal:** Implement full dungeon exploration system with grid movement, encounter gauge, FOEs, and checkpoints.
+
+**Tasks:**
+- [x] Define FloorData type with tiles, walls, exits, checkpoints, FOE spawns (2026-02-08)
+- [x] Create dungeon.ts system with pure TS logic (processTurn, moveFOEs, tickEncounterGauge) (2026-02-08)
+- [x] Build GridRenderer component with CSS Grid + SVG tokens (2026-02-08)
+- [x] Implement Camera system with viewport scrolling (5x5 visible area from 15x15 floor) (2026-02-08)
+- [x] Add swipe gesture input (react-swipeable) + keyboard arrow support (2026-02-08)
+- [x] Create EncounterGauge component with color progression (green→yellow→red) (2026-02-08)
+- [x] Implement FOE system with patrol movement patterns (2026-02-08)
+- [x] Add FOE collision detection → triggers combat transition (2026-02-08)
+- [x] Create DungeonHUD with floor info, encounter gauge, event notifications (2026-02-08)
+- [x] Implement checkpoint system (special tiles that trigger events) (2026-02-08)
+- [x] Add shortcut system (one-way exits that return to earlier checkpoints) (2026-02-08)
+- [x] Create floor-1.ts test floor (15x15 with corridors, rooms, 1 FOE) (2026-02-08)
+- [x] Write comprehensive tests (53 tests for dungeon.ts, 12 for floor data) (2026-02-08)
+- [x] Create dungeonStore with Zustand (bridges dungeon system to React) (2026-02-08)
+
+**Notes:**
+- All dungeon logic pure TypeScript in `src/systems/dungeon.ts` (no React imports)
+- Event-based architecture: processTurn returns state + events for UI consumption
+- Camera follows player with smooth viewport updates
+- Encounter gauge step variance: `baseAmount + floor(random() * 3)` per step
+- FOE movement synchronized: 1 FOE step per 1 player step
+- Reached 129 tests total (76 new tests)
+
+**PR:** #3 — Phase 2: Core Dungeon Movement (merged 2026-02-08)
+
+**Next sprint:** Phase 3 — Combat system implementation.
+
+### Sprint 06 — Phase 3: Combat System (2026-02-08)
+
+**Goal:** Implement full combat system with 3x3 enemy grid, displacement mechanics, bind/ailment status effects, and victory/defeat handling.
+
+**Implementation Plan:** 7 incremental commits following interview-first protocol.
+
+**Commit 1: Combat Types & State Foundation**
+- [x] Define complete type system in `src/types/combat.ts` (2026-02-08)
+- [x] GridPosition, BattleTile, CombatEntity, CombatState, Action types (2026-02-08)
+- [x] Event discriminated unions for UI consumption (2026-02-08)
+- [x] EncounterData and CombatRewards types (2026-02-08)
+
+**Commit 2: Grid & Entity Utilities**
+- [x] Grid utilities: isValidPosition, getTile, addEntityToTile, moveEntity (2026-02-08)
+- [x] Entity queries: findEntity, isAlive, getAliveParty, isPartyWiped (2026-02-08)
+- [x] Bind checks: isHeadBound, isArmBound, isLegBound, canUsePhysicalAttack (2026-02-08)
+- [x] Turn order: calculateSpeed, sortBySpeed, getCurrentActor, advanceTurn (2026-02-08)
+- [x] 53 unit tests for all utility functions (2026-02-08)
+
+**Commit 3: Damage Calculation & Basic Attack**
+- [x] Damage formula: `baseDmg = str * multiplier - vit / 2` (2026-02-08)
+- [x] Variance (0.9-1.1), crit (luc/100 chance → 1.5x), arm bind penalty (0.5x) (2026-02-08)
+- [x] Combo multiplier: `damage * (1 + comboCounter * 0.1)` (2026-02-08)
+- [x] executeAttack: hits ALL entities at target tile (AOE on stacks) (2026-02-08)
+- [x] 17 unit tests with deterministic RNG (2026-02-08)
+
+**Commit 4: Displacement & Trap Tiles**
+- [x] Displacement directions: push (back), pull (forward), left, right (2026-02-08)
+- [x] Boundary clamping (0-2 for 3x3 grid) (2026-02-08)
+- [x] Hazard tiles: spike (10 dmg), web (leg bind 2 turns), fire (poison 5 dmg/turn, 3 turns) (2026-02-08)
+- [x] displaceEntity: moves entity + triggers hazard if present (2026-02-08)
+- [x] 22 unit tests covering all displacement scenarios (2026-02-08)
+
+**Commit 5: Bind & Ailment System**
+- [x] applyBind with resistance scaling: `duration = max(1, baseDuration - floor(resistance/25))` (2026-02-08)
+- [x] Resistance increases by 20 on successful application (2026-02-08)
+- [x] applyAilment for poison, paralyze, sleep, blind (2026-02-08)
+- [x] tickStatusDurations: decrements turn counters at end of turn (2026-02-08)
+- [x] processAilmentEffects: poison damage, paralyze turn skip, sleep removal on hit (2026-02-08)
+- [x] 20 unit tests with controlled RNG (2026-02-08)
+
+**Commit 6: Combat State Machine & Turn Loop**
+- [x] initializeCombat: creates CombatState from EncounterData (2026-02-08)
+- [x] Places enemies on 3x3 grid, sorts turn order by AGI (2026-02-08)
+- [x] executeAction: routes to handlers, checks victory/defeat, marks hasActed (2026-02-08)
+- [x] executeAttack, executeDefend, executeFlee implementations (2026-02-08)
+- [x] checkVictoryDefeat: detects all-enemies-dead or party-wiped (2026-02-08)
+- [x] processTurnEnd, resetComboCounter for turn management (2026-02-08)
+- [x] calculateRewards: fixed 100 + 20*enemies XP (MVP, no materials) (2026-02-08)
+- [x] 20 unit tests for state machine and action execution (2026-02-08)
+
+**Commit 7: Combat Store & Screen Integration**
+- [x] Create combatStore with Zustand (startCombat, selectAction, endCombat) (2026-02-08)
+- [x] Victory: calculates rewards, returns to dungeon after 2s (2026-02-08)
+- [x] Defeat: returns to town after 2s (2026-02-08)
+- [x] Create test data: ENEMY_SLIME, DEFAULT_PARTY (4 blobs), encounter factory (2026-02-08)
+- [x] Update dungeonStore to trigger combatStore.startCombat() on encounters (2026-02-08)
+- [x] Update CombatScreen with MVP display (enemy/party HP bars, phase status) (2026-02-08)
+- [x] 12 unit tests for combat store integration (2026-02-08)
+
+**Test Coverage:**
+- **220 tests total** (+144 new combat tests)
+- All tests passing, build verified clean
+
+**Architecture:**
+- Pure TypeScript game logic in `src/systems/combat.ts` (no React imports)
+- Injectable RNG for deterministic testing
+- Discriminated union events for UI consumption
+- Immutable state updates throughout
+- JSON-serializable state for future save system
+
+**MVP Simplifications:**
+- Skills: Only "Attack" and "Defend" (skill system deferred to Phase 4)
+- Items: Stub (deferred to Phase 5)
+- Enemy AI: Simple random (deferred to Phase 4)
+- Rewards: Fixed XP, no materials yet (deferred to Phase 5)
+- UI: Basic HP bars (polish in Phase 3b)
+
+**PR:** #4 — Phase 3: Combat System Implementation (open, ready for review)
+
+**Next sprint:** Phase 3b — Combat UI polish (grid renderer, action menu, animations) OR Phase 4 — Character & Class System.
+
+### Sprint 07 — Phase 3b: Combat UI Polish (2026-02-08)
+
+**Goal:** Make combat fully playable with interactive UI — grid targeting, action menu, turn timeline, damage feedback, and victory/defeat overlays.
+
+**Tasks:**
+
+**Commit 1: 3x3 Grid Renderer + Tap-to-Target**
+- [x] CombatGrid component with 3x3 CSS Grid layout (2026-02-08)
+- [x] GridTile component with enemy display, HP, hazard icons (2026-02-08)
+- [x] Tap tile to select target (highlight with inverted colors) (2026-02-08)
+- [x] Touch targets >= 44px, empty tiles grayed out (2026-02-08)
+
+**Commit 2: Action Menu + Enemy AI**
+- [x] ActionMenu component: Attack/Defend/Flee buttons (bottom-anchored) (2026-02-08)
+- [x] Attack targeting flow: tap Attack → "Select target" → tap tile → confirm (2026-02-08)
+- [x] Defend and Flee action execution (2026-02-08)
+- [x] Enemy auto-turn: executeEnemyTurn in combat.ts (attacks random alive party member) (2026-02-08)
+- [x] Auto-advance turn order with dead-actor skipping (2026-02-08)
+- [x] advanceToNext and processEnemyTurn added to combatStore (2026-02-08)
+
+**Commit 3: Turn Order Timeline + Combat HUD**
+- [x] TurnOrderTimeline: horizontal entity list sorted by speed, current actor highlighted (2026-02-08)
+- [x] Dead actors shown with strikethrough, acted actors with checkmark (2026-02-08)
+- [x] CombatHUD: round counter, combo display (highlighted when high), flee status (2026-02-08)
+
+**Commit 4: Event Feedback & Animations**
+- [x] DamageNumber component with CSS fade-up animation (2026-02-08)
+- [x] StatusIcon component for bind/ailment indicators on grid tiles (2026-02-08)
+- [x] useCombatEvents hook: processes store events into damage displays + messages (2026-02-08)
+- [x] Party damage display (red numbers next to HP bars when hit) (2026-02-08)
+- [x] Victory overlay (inverted colors, "Returning to dungeon...") (2026-02-08)
+- [x] Defeat overlay (dark background, "Returning to town...") (2026-02-08)
+- [x] CSS keyframe animations: fadeUp, overlayFadeIn (2026-02-08)
+- [x] Event message log below grid (flee success/fail, bind applied, etc.) (2026-02-08)
+
+**Test Coverage:**
+- 220 tests still passing (no regressions)
+- Build verified clean after each commit
+
+**New Files Created:**
+- `src/components/combat/CombatGrid.tsx` — 3x3 grid renderer
+- `src/components/combat/GridTile.tsx` — Individual tile with entity display
+- `src/components/combat/ActionMenu.tsx` — Attack/Defend/Flee buttons
+- `src/components/combat/CombatHUD.tsx` — Top bar with round/combo info
+- `src/components/combat/TurnOrderTimeline.tsx` — Speed-sorted entity list
+- `src/components/combat/DamageNumber.tsx` — Floating damage animation
+- `src/components/combat/StatusIcon.tsx` — Bind/ailment indicators
+- `src/hooks/useCombatEvents.ts` — Event processing hook
+
+**Modified Files:**
+- `src/components/combat/CombatScreen.tsx` — Complete rewrite with all new components
+- `src/stores/combatStore.ts` — Added processEnemyTurn, advanceToNext
+- `src/systems/combat.ts` — Added executeEnemyTurn for enemy AI
+- `src/index.css` — Added combat animation keyframes
+
+**Architecture Notes:**
+- Enemy turns auto-execute via useEffect with debounced delays (500ms think + 600ms advance)
+- Dead actors in turn order are automatically skipped
+- Damage displays use unique IDs and self-destruct after 800ms animation
+- Event messages auto-clear after 1500ms
+- Party members targeted by enemies via direct damage (not grid-based, since party isn't on the grid)
+- All new components follow B&W wireframe palette with gauge-color accents
+
+**PR:** #4 — Phase 3: Combat System Implementation (updated with UI polish)
+
+**Next sprint:** Phase 4 — Character & Class System (6 blob classes, skill trees, equipment).
+
+### Sprint 08 — Dungeon Visual Improvements: Zoom Fix, Fog of War, Minimap (2026-02-08)
+
+**Goal:** Fix the dungeon viewport zoom calculation for landscape displays, add Etrian Odyssey-style fog of war with three visibility states, and add a canvas-based minimap overlay.
+
+**Tasks:**
+
+**Zoom Fix:**
+- [x] Change cellSize calculation to use shorter axis (`Math.min(width, height) / 7`) instead of just width (2026-02-08)
+- [x] Add MIN_CELL_SIZE floor (40px) to prevent tiles from being too small (2026-02-08)
+
+**Fog of War — Types:**
+- [x] Add `TileVisibility = 'hidden' | 'explored' | 'visible'` type to `src/types/dungeon.ts` (2026-02-08)
+- [x] Add `exploredTiles: readonly string[]` to `DungeonState` for serializable fog state (2026-02-08)
+
+**Fog of War — System Logic (`src/systems/dungeon.ts`):**
+- [x] Add `positionKey(pos)` utility for "x,y" string keys (2026-02-08)
+- [x] Add `computeVisibleTiles(playerPos, floor, radius)` — BFS flood-fill within Manhattan radius 3, stops at walls (includes wall faces), respects directional walls (2026-02-08)
+- [x] Add `updateExploredTiles(current, newVisible)` — merges with stable ref optimization (2026-02-08)
+- [x] Add `getTileVisibility(x, y, visibleSet, exploredSet)` — priority: visible > explored > hidden (2026-02-08)
+- [x] Modify `initializeDungeonState()` to seed `exploredTiles` from starting position visibility (2026-02-08)
+- [x] Modify `processTurn()` to update `exploredTiles` after player movement (2026-02-08)
+
+**Fog of War — Components:**
+- [x] Update `DungeonTile.tsx` with `visibility` prop: hidden=black, explored=dimmed gray, visible=white (2026-02-08)
+- [x] Update `DungeonGrid.tsx` to compute `visibleSet` and `exploredSet` via `useMemo`, pass visibility to tiles, filter FOE tokens to only visible tiles (2026-02-08)
+
+**Fog of War — Tests:**
+- [x] Update `makeState` helper to include `exploredTiles: []` (2026-02-08)
+- [x] Add `positionKey` tests (2026-02-08)
+- [x] Add `computeVisibleTiles` tests: open floor radius, wall blocking (includes wall faces), directional wall blocking, out-of-bounds exclusion (2026-02-08)
+- [x] Add `updateExploredTiles` tests: merge, deduplication, stable ref when unchanged (2026-02-08)
+- [x] Add `getTileVisibility` tests: priority ordering (visible > explored > hidden) (2026-02-08)
+- [x] Update `initializeDungeonState` test to verify `exploredTiles` is populated (2026-02-08)
+
+**Minimap:**
+- [x] Create `src/components/dungeon/Minimap.tsx` — canvas-based minimap with collapsed (4px/tile, top-right overlay) and expanded (8px/tile, full-screen dark overlay) modes (2026-02-08)
+- [x] Canvas rendering: black=hidden/wall, white=visible floor, gray=explored floor, black dot=player, gray square=visible FOE (2026-02-08)
+- [x] Integrate `<Minimap>` into `DungeonViewport.tsx` (2026-02-08)
+
+**Test Coverage:**
+- 232 tests passing (12 new fog of war tests)
+- TypeScript compiles cleanly (`tsc --noEmit`)
+
+**Files Modified:**
+- `src/components/dungeon/DungeonViewport.tsx` — zoom fix + minimap integration
+- `src/types/dungeon.ts` — `TileVisibility` type, `exploredTiles` on `DungeonState`
+- `src/systems/dungeon.ts` — 4 new visibility functions, modified init + processTurn
+- `src/systems/dungeon.test.ts` — updated helper, 12 new tests
+- `src/components/dungeon/DungeonTile.tsx` — visibility prop with 3 render states
+- `src/components/dungeon/DungeonGrid.tsx` — visibility computation, FOE filtering
+
+**Files Created:**
+- `src/components/dungeon/Minimap.tsx` — canvas minimap with collapse/expand
+
+**Next sprint:** Phase 4 — Character & Class System (6 blob classes, skill trees, equipment).
 
 ---
 
