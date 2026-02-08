@@ -11,8 +11,8 @@ This file provides guidance to Claude Code when working with code in this reposi
 **Core Game Loop:**
 1. **Town** — Rest, revive, buy/sell equipment, upgrade skill trees, accept quests
 2. **Dungeon** — Navigate a grid map, manage encounter gauge, avoid or engage FOEs (visible field enemies), gather resources
-3. **Combat** — Turn-based, front/back row positioning, Force/Boost mechanics, party synergy
-4. **Return** — Warp to town from checkpoints, sell loot, prepare for the next run
+3. **Combat** — Turn-based, 3x3 enemy grid with push/pull displacement, bind/shutdown mechanics, party of 4
+4. **Return** — Warp to town from checkpoints, sell loot (unlocks new shop items), prepare for the next run
 
 **Aesthetic:** Black-and-white wireframe style. Minimal, clean, zero clutter. Designed for rapid development and strong mobile UX.
 
@@ -208,7 +208,7 @@ blob-rpg/
 
 ## Game Systems Reference
 
-Quick reference for Claude to implement correctly. See `plans/plan.md` for detailed research notes.
+Quick reference for Claude to implement correctly. See `plans/plan.md` for detailed research notes and ADRs.
 
 ### Encounter Gauge
 
@@ -226,27 +226,63 @@ Quick reference for Claude to implement correctly. See `plans/plan.md` for detai
 - Colliding with a FOE initiates a difficult combat — meant to be avoided early, challenged later
 - FOEs respawn on floor re-entry (or after N turns)
 
-### Combat System
+### Combat System (3x3 Grid + Bind/Shutdown)
 
-- **Turn-based** with turn order determined by speed stats
-- **Row system:** Front row (melee, higher damage taken) and back row (ranged, lower damage taken)
-- **Force gauge:** Fills during combat from actions taken and damage received. When full, enables a powerful one-time Force Break ability unique to each class
-- **Boost:** Spend Boost points (accumulate each turn) to enhance the next action — more hits, stronger heal, longer buff duration
+- **Turn-based** with turn order determined by speed stats (AGI)
+- **3x3 enemy grid:** Enemies occupy tiles on a 3x3 grid. Multiple enemies can stack on one tile. Party of 4 displayed as a list (no grid positions for allies).
+- **Displacement:** Skills push/pull enemies between tiles. Pushing enemies together enables AOE combos. Pushing enemies into trap tiles deals bonus effects.
+- **Combo multiplier:** Consecutive hits on the same turn increase damage: `BaseDmg * (1 + combo * 0.1)`
+- **Trap tiles:** Skills can place hazards on grid tiles (spike = damage, web = leg bind, fire = DoT). Pushing enemies into traps triggers the effect.
+- **Bind system:** Head bind (disables spells/INT attacks), Arm bind (disables physicals, -50% damage), Leg bind (prevents escape, -evasion). Each has a turn-based duration.
+- **Ailments:** Poison (flat DoT), Paralyze (% turn loss), Sleep (skip turn + 1.5x damage on first hit), Blind (accuracy drop). Separate from binds.
+- **Conditional skills:** "If target has N binds, deal Nx damage" — rewards setup play.
 - **Escape:** Can flee from random encounters (chance-based). Cannot flee from FOE battles easily.
 
-### Class & Subclass System
+### 6 Blob Classes
 
-- Each character has a main class defining their core skill tree
-- At a certain level, characters can take a subclass granting access to a secondary (partial) skill tree
-- Skill trees are point-based: level up → get skill points → invest in skills
-- Skills have prerequisites (must invest N points in a parent skill to unlock the next tier)
+| Class | Role | Grid Hook |
+|-------|------|-----------|
+| **Ironblob** | Tank/Protector | Push enemies back, create space |
+| **Strikblob** | Melee DPS | Pull enemies forward, multi-hit combos |
+| **Hexblob** | Binder/Specialist | Bind Head/Arm/Leg, conditional payoff skills |
+| **Sparkblob** | Mage/Nuker | AOE splash on tile + adjacent tiles |
+| **Mendblob** | Healer/Medic | Heal, cure binds, place healing zones |
+| **Toxblob** | Debuffer/Field Control | Poison/para/blind, place trap tiles |
+
+**Skill trees:** Hub-and-spoke model per class — central core skill with 3-4 branches. 25/25/25/25 split: Passives / Actives / Synergy-conditionals / Ultimate. Point-based investment with prerequisites.
+
+**Party:** 4 active members chosen from 6 available classes. Equipment: weapon, armor, 2 accessory slots.
 
 ### Town Systems
 
 - **Inn:** Rest to restore HP/TP. Cost scales with party level. Option for partial rest (cheaper, partial restore).
-- **Shop:** Buy equipment and consumables. New stock unlocks when you sell specific monster loot (material system).
+- **Shop:** Material unlock system — selling N of a specific monster drop unlocks new equipment to buy. Conditional drops (e.g. "killed while head-bound") yield rare materials.
 - **Guild:** Accept quests (kill X enemies, gather Y materials, reach floor Z). Quests give bonus rewards.
 - **Save:** Manual save in town. Autosave at dungeon checkpoints. One save slot for MVP.
+
+### Key Type Sketches
+
+```ts
+// 3x3 enemy grid
+interface BattleTile {
+  position: [number, number];
+  entities: string[];  // entity IDs, multiple = stacked
+  hazard?: 'spike' | 'web' | 'fire' | null;
+}
+
+// Displacement skills
+interface DisplacementEffect {
+  direction: 'push' | 'pull' | 'left' | 'right';
+  distance: number;  // usually 1
+}
+
+// Bind state per enemy
+interface BindState {
+  head: number;  // turns remaining, 0 = unbound
+  arm: number;
+  leg: number;
+}
+```
 
 ---
 
@@ -272,14 +308,14 @@ Quick reference for Claude to implement correctly. See `plans/plan.md` for detai
 | Styling | Tailwind CSS | Utility-first for rapid iteration, easy B&W palette constraints | 2026-02-07 |
 | Build tool | Vite | Fast HMR, native TS, simple GitHub Pages deploy | 2026-02-07 |
 | Git workflow | Feature branch + PR | Clean main history, CI checks on PRs, squash merge | 2026-02-07 |
+| Combat spatial model | 3x3 enemy grid + displacement | Radiant Historia-inspired. Swipe-friendly, combo stacking, high depth. | 2026-02-07 |
+| Combat spice mechanic | Bind/Shutdown (EO-style) | Head/Arm/Leg binds disable capabilities, conditional skills exploit them | 2026-02-07 |
+| Class roster | 6 blob classes | Ironblob, Strikblob, Hexblob, Sparkblob, Mendblob, Toxblob | 2026-02-07 |
+| Party structure | 4 active from 6 available | Standard RPG party, manageable on mobile, 15 possible compositions | 2026-02-07 |
+| Dungeon generation | Handcrafted (MVP) | 3-5 manual floors. Procedural deferred to post-MVP. | 2026-02-07 |
+| Economy | Material unlock shop | Selling monster parts unlocks gear. Conditional drops for rare loot. | 2026-02-07 |
+| Skill tree visualization | Hub-and-spoke | Central core + 3-4 branches. 25/25/25/25 split. Mobile-friendly. | 2026-02-07 |
 
-### To Decide (Pending User Interview)
+### Explicitly Deferred (Post-MVP)
 
-- Class roster design (how many classes, themed how?)
-- Dungeon generation approach (handcrafted vs procedural vs hybrid)
-- Combat complexity in MVP (start minimal or full system?)
-- Skill tree visualization style
-- Number of party members
-- Blob character visual style and personality
-
-See `plans/plan.md` → "Decisions Pending User Interview" for full options.
+Force/Boost, Brave/Default, Break/Boost shields, sub-classing, stat sculpting, procedural dungeons, coven/pact squads, monster houses, item identification, JP spillover, union formations, tactic cards, respec mechanics, multi-party dungeons. See `plans/plan.md` → "Explicitly Deferred" for full list.
