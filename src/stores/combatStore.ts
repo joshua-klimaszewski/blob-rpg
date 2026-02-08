@@ -23,6 +23,7 @@ import {
 } from '../systems/combat';
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
+import { getSkill } from '../data/classes/index';
 
 interface CombatStore {
   /** Current combat state (null = not in combat) */
@@ -102,7 +103,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const { combat } = get();
     if (!combat) return;
 
-    const result = executeAction(combat, action, defaultRNG);
+    const result = executeAction(combat, action, defaultRNG, getSkill);
 
     set({
       combat: result.state,

@@ -1167,7 +1167,8 @@ export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionRe
 export function executeAction(
   state: CombatState,
   action: Action,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  skillLookup?: (id: string) => SkillDefinition
 ): ActionResult {
   // Validate actor is alive
   const actor = findEntity(state, action.actorId);
@@ -1197,7 +1198,7 @@ export function executeAction(
 
     case 'skill': {
       const skillAction = action as SkillAction;
-      result = executeSkillAction(state, action.actorId, skillAction.skillId, skillAction.targetTile, rng);
+      result = executeSkillAction(state, action.actorId, skillAction.skillId, skillAction.targetTile, rng, skillLookup);
       break;
     }
 
