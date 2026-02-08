@@ -1,5 +1,7 @@
 import { useDungeonStore } from '../../stores/dungeonStore'
 import { DungeonViewport } from './DungeonViewport'
+import { DungeonHUD } from './DungeonHUD'
+import { EncounterGauge } from './EncounterGauge'
 import { useDirectionInput } from '../../hooks/useDirectionInput'
 
 export function DungeonScreen() {
@@ -20,18 +22,9 @@ export function DungeonScreen() {
 
   return (
     <div className="flex flex-col h-dvh">
-      {/* Viewport takes remaining space */}
+      <DungeonHUD floorNumber={dungeon.floorNumber} onReturnToTown={warpToTown} />
       <DungeonViewport floor={floor} dungeon={dungeon} />
-
-      {/* Temporary controls (will be replaced by HUD in commit 6) */}
-      <div className="flex gap-3 p-3 border-t-2 border-ink justify-center">
-        <button
-          onClick={() => warpToTown()}
-          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          Return to Town
-        </button>
-      </div>
+      <EncounterGauge gauge={dungeon.encounterGauge} />
     </div>
   )
 }
