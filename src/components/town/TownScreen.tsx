@@ -1,7 +1,7 @@
-import { useGameStore } from '../../stores/gameStore'
+import { useDungeonStore } from '../../stores/dungeonStore'
 
 export function TownScreen() {
-  const setScreen = useGameStore((s) => s.setScreen)
+  const enterDungeon = useDungeonStore((s) => s.enterDungeon)
 
   return (
     <div className="flex flex-col items-center gap-6 p-6">
@@ -9,7 +9,7 @@ export function TownScreen() {
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <button
-          onClick={() => setScreen('dungeon')}
+          onClick={() => enterDungeon('verdant-depths-f1')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
           Enter Dungeon

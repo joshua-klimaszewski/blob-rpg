@@ -8,8 +8,8 @@ describe('Floor 1 — Verdant Depths F1', () => {
     expect(FLOOR_1.width).toBe(15)
     expect(FLOOR_1.height).toBe(15)
     expect(FLOOR_1.tiles.length).toBe(15)
-    FLOOR_1.tiles.forEach((row, y) => {
-      expect(row.length).withContext(`row ${y}`).toBe(15)
+    FLOOR_1.tiles.forEach((row) => {
+      expect(row.length).toBe(15)
     })
   })
 
@@ -59,9 +59,7 @@ describe('Floor 1 — Verdant Depths F1', () => {
 
   it('all FOE spawns are on walkable tiles', () => {
     for (const spawn of FLOOR_1.foeSpawns) {
-      expect(isWalkable(FLOOR_1, spawn.position)).withContext(
-        `FOE ${spawn.id} at (${spawn.position.x}, ${spawn.position.y})`,
-      ).toBe(true)
+      expect(isWalkable(FLOOR_1, spawn.position)).toBe(true)
     }
   })
 
@@ -69,9 +67,7 @@ describe('Floor 1 — Verdant Depths F1', () => {
     for (const spawn of FLOOR_1.foeSpawns) {
       if (spawn.patrolPath) {
         for (const pos of spawn.patrolPath) {
-          expect(isWalkable(FLOOR_1, pos)).withContext(
-            `FOE ${spawn.id} patrol at (${pos.x}, ${pos.y})`,
-          ).toBe(true)
+          expect(isWalkable(FLOOR_1, pos)).toBe(true)
         }
       }
     }
