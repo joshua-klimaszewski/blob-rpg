@@ -1,10 +1,14 @@
 import { useDungeonStore } from '../../stores/dungeonStore'
 import { DungeonViewport } from './DungeonViewport'
+import { useDirectionInput } from '../../hooks/useDirectionInput'
 
 export function DungeonScreen() {
   const dungeon = useDungeonStore((s) => s.dungeon)
   const floor = useDungeonStore((s) => s.floor)
   const warpToTown = useDungeonStore((s) => s.warpToTown)
+  const move = useDungeonStore((s) => s.move)
+
+  useDirectionInput(move)
 
   if (!dungeon || !floor) {
     return (
