@@ -31,44 +31,53 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 > Walk a grid, encounter gauge, FOEs.
 
-- [ ] Define dungeon floor data format (tiles, walls, exits, FOE spawns, checkpoints)
-- [ ] Build dungeon grid renderer (CSS Grid + tile components)
-- [ ] Implement player position + movement (swipe gestures + keyboard arrows)
-- [ ] Turn system: player moves → FOEs move → encounter gauge ticks
-- [ ] Encounter gauge component + logic (step-based fill, green→yellow→red, threshold trigger)
-- [ ] FOE entities with patrol movement pattern
-- [ ] FOE collision → transition to combat screen
-- [ ] Dungeon HUD (floor number, encounter gauge, party HP summary)
-- [ ] Shortcut/checkpoint mechanic (one-way paths, warp to town)
-- [ ] First test floor (handcrafted, ~15x15 grid with corridors + rooms)
+- [x] Define dungeon floor data format (tiles, walls, exits, FOE spawns, checkpoints) (2026-02-08)
+- [x] Build dungeon grid renderer (CSS Grid + tile components) (2026-02-08)
+- [x] Implement player position + movement (swipe gestures + keyboard arrows) (2026-02-08)
+- [x] Turn system: player moves → FOEs move → encounter gauge ticks (2026-02-08)
+- [x] Encounter gauge component + logic (step-based fill, green→yellow→red, threshold trigger) (2026-02-08)
+- [x] FOE entities with patrol movement pattern (2026-02-08)
+- [x] FOE collision → transition to combat screen (2026-02-08)
+- [x] Dungeon HUD (floor number, encounter gauge, party HP summary) (2026-02-08)
+- [x] Shortcut/checkpoint mechanic (one-way paths, warp to town) (2026-02-08)
+- [x] First test floor (handcrafted, ~15x15 grid with corridors + rooms) (2026-02-08)
 
 ### Phase 3: Combat System (3x3 Grid + Bind/Shutdown)
 
 > Full combat with displacement combos and bind system.
 
 **3a — Combat Foundation:**
-- [ ] 3x3 enemy grid state model (array of entities per tile for stacking)
-- [ ] Grid renderer (tap to target tiles)
-- [ ] Party display (4 characters in a list with HP/TP bars)
-- [ ] Turn order (speed-based timeline, visible to player)
-- [ ] Basic actions: Attack (target a tile), Defend, Item, Flee
-- [ ] Damage formula (STR, DEF, variance, tile position modifier)
-- [ ] Combat state machine (useReducer-based)
-- [ ] Combat rewards (XP, material drops) and victory/defeat transitions
-- [ ] Party wipe handling (return to town, penalties)
+- [x] 3x3 enemy grid state model (array of entities per tile for stacking) (2026-02-08)
+- [x] Party display (4 characters in a list with HP/TP bars) (2026-02-08)
+- [x] Turn order (speed-based timeline, AGI-sorted) (2026-02-08)
+- [x] Basic actions: Attack (target a tile), Defend, Flee (2026-02-08)
+- [x] Damage formula (STR/VIT, variance, crit, combo multiplier) (2026-02-08)
+- [x] Combat state machine (Zustand + pure TS systems) (2026-02-08)
+- [x] Combat rewards (XP calculation) and victory/defeat transitions (2026-02-08)
+- [x] Party wipe handling (return to town) (2026-02-08)
+- ~~Grid renderer (tap to target tiles)~~ — deferred to Phase 3b UI polish
+- ~~Item action~~ — deferred to Phase 5 (inventory system)
 
 **3b — Displacement + Combos:**
-- [ ] Displacement skills with direction vectors: Push (back), Pull (forward), Lateral (left/right)
-- [ ] Stacking mechanic: multiple entities per tile, AOE hits all stacked
-- [ ] Combo multiplier: consecutive hits increase damage (BaseDmg * (1 + combo * 0.1))
-- [ ] Trap tiles on the enemy grid (spike = damage, web = leg bind)
+- [x] Displacement mechanics with direction vectors: Push (back), Pull (forward), Left, Right (2026-02-08)
+- [x] Stacking mechanic: multiple entities per tile, AOE hits all stacked (2026-02-08)
+- [x] Combo multiplier: consecutive hits increase damage (BaseDmg * (1 + combo * 0.1)) (2026-02-08)
+- [x] Trap tiles on the enemy grid (spike = 10 dmg, web = leg bind, fire = poison) (2026-02-08)
 
 **3c — Bind/Shutdown:**
-- [ ] Bind status effects: Head (disables spells/INT attacks), Arm (disables physicals, -50% damage), Leg (prevents escape/evasion, disables speed skills)
-- [ ] Bind duration (turns-based) + resistance scaling
-- [ ] Ailments: Poison (flat DoT), Paralyze (% turn loss), Sleep (skip + 1.5x first hit), Blind (accuracy drop)
-- [ ] Conditional skill logic: "if target has N binds, deal Nx damage"
-- [ ] Enemy AI: weighted random action selection, respects own binds (bound arm = can't use physical)
+- [x] Bind status effects: Head (disables INT attacks), Arm (50% damage reduction), Leg (prevents flee) (2026-02-08)
+- [x] Bind duration (turns-based) + resistance scaling (duration reduction, resistance buildup) (2026-02-08)
+- [x] Ailments: Poison (flat DoT), Paralyze (% turn skip), Sleep (turn skip + removed on hit), Blind (accuracy penalty) (2026-02-08)
+- ~~Conditional skill logic: "if target has N binds, deal Nx damage"~~ — deferred to Phase 4 (skill system)
+- ~~Enemy AI: weighted random action selection~~ — deferred to Phase 4 (basic random AI for MVP)
+
+**Phase 3b UI Polish (Next):**
+- [ ] 3x3 grid renderer with tap-to-target interaction
+- [ ] Action menu UI (Attack/Defend/Flee buttons with disable states)
+- [ ] Turn order timeline component
+- [ ] Damage number popups and animations
+- [ ] Bind/ailment status icon display
+- [ ] Displacement animation effects
 
 ### Phase 4: Character & Class System
 
@@ -582,6 +591,120 @@ These systems were researched but intentionally excluded from MVP scope:
 - 12 research documents preserved in `research/` directory
 
 **Next sprint:** Phase 2 — begin dungeon movement system implementation.
+
+### Sprint 05 — Phase 2: Core Dungeon Movement (2026-02-08)
+
+**Goal:** Implement full dungeon exploration system with grid movement, encounter gauge, FOEs, and checkpoints.
+
+**Tasks:**
+- [x] Define FloorData type with tiles, walls, exits, checkpoints, FOE spawns (2026-02-08)
+- [x] Create dungeon.ts system with pure TS logic (processTurn, moveFOEs, tickEncounterGauge) (2026-02-08)
+- [x] Build GridRenderer component with CSS Grid + SVG tokens (2026-02-08)
+- [x] Implement Camera system with viewport scrolling (5x5 visible area from 15x15 floor) (2026-02-08)
+- [x] Add swipe gesture input (react-swipeable) + keyboard arrow support (2026-02-08)
+- [x] Create EncounterGauge component with color progression (green→yellow→red) (2026-02-08)
+- [x] Implement FOE system with patrol movement patterns (2026-02-08)
+- [x] Add FOE collision detection → triggers combat transition (2026-02-08)
+- [x] Create DungeonHUD with floor info, encounter gauge, event notifications (2026-02-08)
+- [x] Implement checkpoint system (special tiles that trigger events) (2026-02-08)
+- [x] Add shortcut system (one-way exits that return to earlier checkpoints) (2026-02-08)
+- [x] Create floor-1.ts test floor (15x15 with corridors, rooms, 1 FOE) (2026-02-08)
+- [x] Write comprehensive tests (53 tests for dungeon.ts, 12 for floor data) (2026-02-08)
+- [x] Create dungeonStore with Zustand (bridges dungeon system to React) (2026-02-08)
+
+**Notes:**
+- All dungeon logic pure TypeScript in `src/systems/dungeon.ts` (no React imports)
+- Event-based architecture: processTurn returns state + events for UI consumption
+- Camera follows player with smooth viewport updates
+- Encounter gauge step variance: `baseAmount + floor(random() * 3)` per step
+- FOE movement synchronized: 1 FOE step per 1 player step
+- Reached 129 tests total (76 new tests)
+
+**PR:** #3 — Phase 2: Core Dungeon Movement (merged 2026-02-08)
+
+**Next sprint:** Phase 3 — Combat system implementation.
+
+### Sprint 06 — Phase 3: Combat System (2026-02-08)
+
+**Goal:** Implement full combat system with 3x3 enemy grid, displacement mechanics, bind/ailment status effects, and victory/defeat handling.
+
+**Implementation Plan:** 7 incremental commits following interview-first protocol.
+
+**Commit 1: Combat Types & State Foundation**
+- [x] Define complete type system in `src/types/combat.ts` (2026-02-08)
+- [x] GridPosition, BattleTile, CombatEntity, CombatState, Action types (2026-02-08)
+- [x] Event discriminated unions for UI consumption (2026-02-08)
+- [x] EncounterData and CombatRewards types (2026-02-08)
+
+**Commit 2: Grid & Entity Utilities**
+- [x] Grid utilities: isValidPosition, getTile, addEntityToTile, moveEntity (2026-02-08)
+- [x] Entity queries: findEntity, isAlive, getAliveParty, isPartyWiped (2026-02-08)
+- [x] Bind checks: isHeadBound, isArmBound, isLegBound, canUsePhysicalAttack (2026-02-08)
+- [x] Turn order: calculateSpeed, sortBySpeed, getCurrentActor, advanceTurn (2026-02-08)
+- [x] 53 unit tests for all utility functions (2026-02-08)
+
+**Commit 3: Damage Calculation & Basic Attack**
+- [x] Damage formula: `baseDmg = str * multiplier - vit / 2` (2026-02-08)
+- [x] Variance (0.9-1.1), crit (luc/100 chance → 1.5x), arm bind penalty (0.5x) (2026-02-08)
+- [x] Combo multiplier: `damage * (1 + comboCounter * 0.1)` (2026-02-08)
+- [x] executeAttack: hits ALL entities at target tile (AOE on stacks) (2026-02-08)
+- [x] 17 unit tests with deterministic RNG (2026-02-08)
+
+**Commit 4: Displacement & Trap Tiles**
+- [x] Displacement directions: push (back), pull (forward), left, right (2026-02-08)
+- [x] Boundary clamping (0-2 for 3x3 grid) (2026-02-08)
+- [x] Hazard tiles: spike (10 dmg), web (leg bind 2 turns), fire (poison 5 dmg/turn, 3 turns) (2026-02-08)
+- [x] displaceEntity: moves entity + triggers hazard if present (2026-02-08)
+- [x] 22 unit tests covering all displacement scenarios (2026-02-08)
+
+**Commit 5: Bind & Ailment System**
+- [x] applyBind with resistance scaling: `duration = max(1, baseDuration - floor(resistance/25))` (2026-02-08)
+- [x] Resistance increases by 20 on successful application (2026-02-08)
+- [x] applyAilment for poison, paralyze, sleep, blind (2026-02-08)
+- [x] tickStatusDurations: decrements turn counters at end of turn (2026-02-08)
+- [x] processAilmentEffects: poison damage, paralyze turn skip, sleep removal on hit (2026-02-08)
+- [x] 20 unit tests with controlled RNG (2026-02-08)
+
+**Commit 6: Combat State Machine & Turn Loop**
+- [x] initializeCombat: creates CombatState from EncounterData (2026-02-08)
+- [x] Places enemies on 3x3 grid, sorts turn order by AGI (2026-02-08)
+- [x] executeAction: routes to handlers, checks victory/defeat, marks hasActed (2026-02-08)
+- [x] executeAttack, executeDefend, executeFlee implementations (2026-02-08)
+- [x] checkVictoryDefeat: detects all-enemies-dead or party-wiped (2026-02-08)
+- [x] processTurnEnd, resetComboCounter for turn management (2026-02-08)
+- [x] calculateRewards: fixed 100 + 20*enemies XP (MVP, no materials) (2026-02-08)
+- [x] 20 unit tests for state machine and action execution (2026-02-08)
+
+**Commit 7: Combat Store & Screen Integration**
+- [x] Create combatStore with Zustand (startCombat, selectAction, endCombat) (2026-02-08)
+- [x] Victory: calculates rewards, returns to dungeon after 2s (2026-02-08)
+- [x] Defeat: returns to town after 2s (2026-02-08)
+- [x] Create test data: ENEMY_SLIME, DEFAULT_PARTY (4 blobs), encounter factory (2026-02-08)
+- [x] Update dungeonStore to trigger combatStore.startCombat() on encounters (2026-02-08)
+- [x] Update CombatScreen with MVP display (enemy/party HP bars, phase status) (2026-02-08)
+- [x] 12 unit tests for combat store integration (2026-02-08)
+
+**Test Coverage:**
+- **220 tests total** (+144 new combat tests)
+- All tests passing, build verified clean
+
+**Architecture:**
+- Pure TypeScript game logic in `src/systems/combat.ts` (no React imports)
+- Injectable RNG for deterministic testing
+- Discriminated union events for UI consumption
+- Immutable state updates throughout
+- JSON-serializable state for future save system
+
+**MVP Simplifications:**
+- Skills: Only "Attack" and "Defend" (skill system deferred to Phase 4)
+- Items: Stub (deferred to Phase 5)
+- Enemy AI: Simple random (deferred to Phase 4)
+- Rewards: Fixed XP, no materials yet (deferred to Phase 5)
+- UI: Basic HP bars (polish in Phase 3b)
+
+**PR:** #4 — Phase 3: Combat System Implementation (open, ready for review)
+
+**Next sprint:** Phase 3b — Combat UI polish (grid renderer, action menu, animations) OR Phase 4 — Character & Class System.
 
 ---
 
