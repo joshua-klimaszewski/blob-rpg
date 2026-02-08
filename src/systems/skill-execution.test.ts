@@ -7,11 +7,6 @@ import type {
   BattleTile,
   CombatEntity,
   CombatState,
-  EntityStats,
-  BindState,
-  AilmentState,
-  ResistanceState,
-  TurnEntry,
 } from '../types/combat';
 import type { SkillDefinition } from '../types/character';
 import {

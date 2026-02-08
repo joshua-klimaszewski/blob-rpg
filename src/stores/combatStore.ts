@@ -22,6 +22,7 @@ import {
   defaultRNG,
 } from '../systems/combat';
 import { useGameStore } from './gameStore';
+import { usePartyStore } from './partyStore';
 
 interface CombatStore {
   /** Current combat state (null = not in combat) */
@@ -59,6 +60,10 @@ function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
   if (state.phase === 'victory') {
     const rewards = calculateRewards(state);
     useCombatStore.setState({ rewards });
+
+    // Award XP and sync HP/TP to party store
+    usePartyStore.getState().awardXp(rewards.xp);
+    usePartyStore.getState().syncHpTpFromCombat(state.party);
 
     setTimeout(() => {
       get().endCombat();

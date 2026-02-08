@@ -1,20 +1,26 @@
 /**
  * Encounter Factory
  *
- * MVP: Creates simple random encounters for Phase 3 testing.
- * Full encounter tables per floor come later.
+ * Creates encounters using the party store's active party.
+ * Falls back to DEFAULT_PARTY if the store hasn't been initialized.
  */
 
 import type { EncounterData } from '../../types/combat';
 import { ENEMY_SLIME } from '../enemies/slime';
 import { DEFAULT_PARTY } from '../party/defaults';
+import { usePartyStore } from '../../stores/partyStore';
 
 let encounterIdCounter = 0;
+
+function getParty() {
+  const activeParty = usePartyStore.getState().getActiveParty();
+  return activeParty.length > 0 ? activeParty : DEFAULT_PARTY;
+}
 
 /**
  * Create a simple random encounter (MVP)
  * - 1-2 enemies
- * - Default party
+ * - Party from store (or default fallback)
  * - Can flee from random encounters
  */
 export function createRandomEncounter(): EncounterData {
@@ -33,7 +39,7 @@ export function createRandomEncounter(): EncounterData {
   }
 
   return {
-    party: DEFAULT_PARTY,
+    party: getParty(),
     enemies,
     canFlee: true,
   };
@@ -42,7 +48,7 @@ export function createRandomEncounter(): EncounterData {
 /**
  * Create an FOE encounter (MVP)
  * - 2-3 enemies
- * - Cannot flee easily (MVP: still 50% but flagged as FOE)
+ * - Cannot flee easily
  */
 export function createFOEEncounter(): EncounterData {
   const numEnemies = 2 + Math.floor(Math.random() * 2); // 2 or 3
@@ -53,15 +59,15 @@ export function createFOEEncounter(): EncounterData {
     const col = i % 3;
 
     enemies.push({
-      definition: ENEMY_SLIME, // MVP: Still slimes, just more of them
+      definition: ENEMY_SLIME,
       instanceId: `enemy-${encounterIdCounter++}`,
       position: [row, col] as [number, number],
     });
   }
 
   return {
-    party: DEFAULT_PARTY,
+    party: getParty(),
     enemies,
-    canFlee: false, // FOE battles harder to flee
+    canFlee: false,
   };
 }
