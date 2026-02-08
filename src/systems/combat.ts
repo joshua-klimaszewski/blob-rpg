@@ -12,6 +12,8 @@ import type {
   CombatEntity,
   CombatState,
   BindType,
+  CombatEventUnion,
+  DamageEvent,
 } from '../types/combat';
 
 // ============================================================================
@@ -289,4 +291,153 @@ export function advanceTurn(state: CombatState): CombatState {
       hasActed: idx === newIndex ? false : entry.hasActed,
     })),
   };
+}
+
+// ============================================================================
+// Damage Calculation
+// ============================================================================
+
+/** Result of damage calculation */
+export interface DamageResult {
+  damage: number;
+  isCrit: boolean;
+  killed: boolean;
+}
+
+/**
+ * Calculate damage dealt from attacker to defender
+ *
+ * Formula:
+ * - baseDmg = attacker.str * multiplier - defender.vit / 2
+ * - Variance: 0.9-1.1 via RNG
+ * - Crit: rng() < (attacker.luc / 100) → dmg * 1.5
+ * - Arm bind on attacker → dmg * 0.5
+ * - Combo multiplier → dmg * (1 + comboCounter * 0.1)
+ */
+export function calculateDamage(
+  attacker: CombatEntity,
+  defender: CombatEntity,
+  multiplier: number,
+  comboCounter: number,
+  rng: RNG = defaultRNG
+): DamageResult {
+  // Base damage calculation
+  const baseDmg = Math.max(1, attacker.stats.str * multiplier - defender.stats.vit / 2);
+
+  // Variance (0.9 to 1.1)
+  const variance = 0.9 + rng() * 0.2;
+  let damage = baseDmg * variance;
+
+  // Critical hit check
+  const critChance = attacker.stats.luc / 100;
+  const isCrit = rng() < critChance;
+  if (isCrit) {
+    damage *= 1.5;
+  }
+
+  // Arm bind penalty on attacker
+  if (isArmBound(attacker)) {
+    damage *= 0.5;
+  }
+
+  // Combo multiplier
+  const comboMultiplier = 1 + comboCounter * 0.1;
+  damage *= comboMultiplier;
+
+  // Round and clamp to minimum 1
+  damage = Math.max(1, Math.floor(damage));
+
+  // Check if this kills the defender
+  const killed = damage >= defender.hp;
+
+  return { damage, isCrit, killed };
+}
+
+/**
+ * Apply damage to an entity (returns new entity)
+ */
+export function applyDamage(entity: CombatEntity, amount: number): CombatEntity {
+  return {
+    ...entity,
+    hp: Math.max(0, entity.hp - amount),
+  };
+}
+
+/**
+ * Update an entity in the combat state
+ */
+function updateEntity(state: CombatState, entityId: string, entity: CombatEntity): CombatState {
+  return {
+    ...state,
+    party: state.party.map((e) => (e.id === entityId ? entity : e)),
+    enemies: state.enemies.map((e) => (e.id === entityId ? entity : e)),
+  };
+}
+
+// ============================================================================
+// Attack Action
+// ============================================================================
+
+/** Result of executing an attack action */
+export interface AttackResult {
+  state: CombatState;
+  events: CombatEventUnion[];
+}
+
+/**
+ * Execute an attack action
+ * Hits ALL entities at the target tile (AOE on stacks)
+ * Increments combo counter per hit
+ */
+export function executeAttack(
+  state: CombatState,
+  actorId: string,
+  targetTile: GridPosition,
+  rng: RNG = defaultRNG
+): AttackResult {
+  const attacker = findEntity(state, actorId);
+  if (!attacker || !isAlive(attacker)) {
+    return { state, events: [] };
+  }
+
+  // Get all entities at target tile
+  const targetIds = getEntitiesAtTile(state.grid, targetTile);
+  if (targetIds.length === 0) {
+    return { state, events: [] };
+  }
+
+  const events: CombatEventUnion[] = [];
+  let newState = { ...state };
+
+  // Attack each entity at the tile
+  for (const targetId of targetIds) {
+    const defender = findEntity(newState, targetId);
+    if (!defender || !isAlive(defender)) continue;
+
+    // Calculate damage (MVP: multiplier = 1.0 for basic attack)
+    const result = calculateDamage(attacker, defender, 1.0, newState.comboCounter, rng);
+
+    // Apply damage
+    const damagedEntity = applyDamage(defender, result.damage);
+    newState = updateEntity(newState, targetId, damagedEntity);
+
+    // Increment combo counter
+    newState = {
+      ...newState,
+      comboCounter: newState.comboCounter + 1,
+    };
+
+    // Create damage event
+    const damageEvent: DamageEvent = {
+      type: 'damage',
+      timestamp: Date.now(),
+      targetId,
+      damage: result.damage,
+      isCrit: result.isCrit,
+      killed: result.killed,
+    };
+    events.push(damageEvent);
+  }
+
+  return { state: newState, events };
 }

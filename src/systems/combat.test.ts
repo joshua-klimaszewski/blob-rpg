@@ -40,6 +40,10 @@ import {
   getCurrentActor,
   getNextAliveActor,
   advanceTurn,
+  calculateDamage,
+  applyDamage,
+  executeAttack,
+  type RNG,
 } from './combat';
 
 // ============================================================================
@@ -628,5 +632,326 @@ describe('advanceTurn', () => {
     const newState = advanceTurn(state);
 
     expect(newState.turnOrder[1].hasActed).toBe(false);
+  });
+});
+
+// ============================================================================
+// Damage Calculation Tests
+// ============================================================================
+
+describe('calculateDamage', () => {
+  // Deterministic RNG for testing
+  const fixedRNG = (value: number): RNG => () => value;
+
+  it('should calculate basic damage', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    // Fixed RNG: variance = 0.9, no crit
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(0.0));
+
+    // baseDmg = 20 * 1.0 - 10 / 2 = 15
+    // variance = 0.9 → 15 * 0.9 = 13.5 → floor = 13
+    expect(result.damage).toBe(13);
+    expect(result.isCrit).toBe(false);
+  });
+
+  it('should apply variance correctly', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    // Fixed RNG: variance = 1.1 (rng = 1.0 → 0.9 + 1.0 * 0.2 = 1.1)
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(1.0));
+
+    // baseDmg = 15, variance = 1.1 → 15 * 1.1 = 16.5 → floor = 16
+    expect(result.damage).toBe(16);
+  });
+
+  it('should apply critical hit multiplier', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 100 }, // 100% crit
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    // rng() returns 0.0 → always crit
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(0.0));
+
+    // baseDmg = 15, variance = 0.9, crit × 1.5 → 13.5 * 1.5 = 20.25 → floor = 20
+    expect(result.damage).toBe(20);
+    expect(result.isCrit).toBe(true);
+  });
+
+  it('should reduce damage when attacker is arm bound', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+      binds: { head: 0, arm: 2, leg: 0 }, // arm bound
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(0.0));
+
+    // baseDmg = 15, variance = 0.9, arm bind × 0.5 → 13.5 * 0.5 = 6.75 → floor = 6
+    expect(result.damage).toBe(6);
+  });
+
+  it('should apply combo multiplier', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    // Combo counter = 3 → multiplier = 1 + 3 * 0.1 = 1.3
+    const result = calculateDamage(attacker, defender, 1.0, 3, fixedRNG(0.5));
+
+    // baseDmg = 15, variance = 1.0, combo × 1.3 → 15 * 1.3 = 19.5 → floor = 19
+    expect(result.damage).toBe(19);
+  });
+
+  it('should apply skill multiplier', () => {
+    const attacker = createTestEntity({
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    // Multiplier = 2.0 (strong skill)
+    const result = calculateDamage(attacker, defender, 2.0, 0, fixedRNG(0.5));
+
+    // baseDmg = 20 * 2.0 - 10/2 = 35, variance = 1.0 → 35
+    expect(result.damage).toBe(35);
+  });
+
+  it('should return minimum 1 damage', () => {
+    const attacker = createTestEntity({
+      stats: { str: 1, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      stats: { str: 10, vit: 100, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(0.0));
+
+    expect(result.damage).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should detect when damage kills defender', () => {
+    const attacker = createTestEntity({
+      stats: { str: 50, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      hp: 10, // Low HP
+      stats: { str: 10, vit: 5, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG(0.5));
+
+    expect(result.killed).toBe(true);
+    expect(result.damage).toBeGreaterThanOrEqual(defender.hp);
+  });
+});
+
+describe('applyDamage', () => {
+  it('should reduce HP by damage amount', () => {
+    const entity = createTestEntity({ hp: 50, maxHp: 50 });
+    const damaged = applyDamage(entity, 15);
+
+    expect(damaged.hp).toBe(35);
+  });
+
+  it('should not reduce HP below 0', () => {
+    const entity = createTestEntity({ hp: 10, maxHp: 50 });
+    const damaged = applyDamage(entity, 20);
+
+    expect(damaged.hp).toBe(0);
+  });
+
+  it('should not mutate original entity', () => {
+    const entity = createTestEntity({ hp: 50, maxHp: 50 });
+    const damaged = applyDamage(entity, 15);
+
+    expect(entity.hp).toBe(50);
+    expect(damaged).not.toBe(entity);
+  });
+});
+
+// ============================================================================
+// Attack Action Tests
+// ============================================================================
+
+describe('executeAttack', () => {
+  it('should damage single enemy at target tile', () => {
+    const attacker = createTestEntity({
+      id: 'party-1',
+      isParty: true,
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({
+      id: 'enemy-1',
+      hp: 50,
+      stats: { str: 10, vit: 10, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+      comboCounter: 0,
+    });
+
+    const result = executeAttack(state, 'party-1', [1, 1]);
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('damage');
+
+    const damageEvent = result.events[0] as any;
+    expect(damageEvent.targetId).toBe('enemy-1');
+    expect(damageEvent.damage).toBeGreaterThan(0);
+
+    // Enemy should take damage
+    const updatedEnemy = findEntity(result.state, 'enemy-1')!;
+    expect(updatedEnemy.hp).toBeLessThan(50);
+
+    // Combo counter should increment
+    expect(result.state.comboCounter).toBe(1);
+  });
+
+  it('should hit all stacked enemies at target tile (AOE)', () => {
+    const attacker = createTestEntity({
+      id: 'party-1',
+      isParty: true,
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const enemy1 = createTestEntity({ id: 'enemy-1', hp: 50 });
+    const enemy2 = createTestEntity({ id: 'enemy-2', hp: 50 });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+    grid = addEntityToTile(grid, 'enemy-2', [1, 1]); // Stacked
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [enemy1, enemy2],
+      grid,
+      comboCounter: 0,
+    });
+
+    const result = executeAttack(state, 'party-1', [1, 1]);
+
+    expect(result.events).toHaveLength(2); // Two damage events
+    expect(result.state.comboCounter).toBe(2); // Combo increments twice
+
+    // Both enemies should take damage
+    const updatedEnemy1 = findEntity(result.state, 'enemy-1')!;
+    const updatedEnemy2 = findEntity(result.state, 'enemy-2')!;
+    expect(updatedEnemy1.hp).toBeLessThan(50);
+    expect(updatedEnemy2.hp).toBeLessThan(50);
+  });
+
+  it('should increment combo counter for each hit', () => {
+    const attacker = createTestEntity({
+      id: 'party-1',
+      isParty: true,
+      stats: { str: 20, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const enemy1 = createTestEntity({ id: 'enemy-1', hp: 50 });
+    const enemy2 = createTestEntity({ id: 'enemy-2', hp: 50 });
+    const enemy3 = createTestEntity({ id: 'enemy-3', hp: 50 });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [0, 0]);
+    grid = addEntityToTile(grid, 'enemy-2', [0, 0]);
+    grid = addEntityToTile(grid, 'enemy-3', [0, 0]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [enemy1, enemy2, enemy3],
+      grid,
+      comboCounter: 0,
+    });
+
+    const result = executeAttack(state, 'party-1', [0, 0]);
+
+    expect(result.state.comboCounter).toBe(3);
+  });
+
+  it('should return no events if target tile is empty', () => {
+    const attacker = createTestEntity({ id: 'party-1', isParty: true });
+    const grid = createEmptyGrid();
+
+    const state = createTestState({
+      party: [attacker],
+      grid,
+    });
+
+    const result = executeAttack(state, 'party-1', [1, 1]);
+
+    expect(result.events).toHaveLength(0);
+    expect(result.state.comboCounter).toBe(0);
+  });
+
+  it('should return no events if attacker is dead', () => {
+    const attacker = createTestEntity({ id: 'party-1', hp: 0, isParty: true });
+    const defender = createTestEntity({ id: 'enemy-1', hp: 50 });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+    });
+
+    const result = executeAttack(state, 'party-1', [1, 1]);
+
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('should set killed flag in event when damage kills target', () => {
+    const attacker = createTestEntity({
+      id: 'party-1',
+      isParty: true,
+      stats: { str: 100, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 }, // High damage
+    });
+    const defender = createTestEntity({
+      id: 'enemy-1',
+      hp: 10, // Low HP
+      stats: { str: 10, vit: 5, int: 10, wis: 10, agi: 10, luc: 10 },
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+    });
+
+    const result = executeAttack(state, 'party-1', [1, 1]);
+
+    const damageEvent = result.events[0] as any;
+    expect(damageEvent.killed).toBe(true);
+
+    const updatedEnemy = findEntity(result.state, 'enemy-1')!;
+    expect(updatedEnemy.hp).toBe(0);
   });
 });
