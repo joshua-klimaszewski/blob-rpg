@@ -959,7 +959,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     maxHp: member.maxHp,
     tp: member.tp,
     maxTp: member.maxTp,
-    stats: member.stats,
+    stats: { ...member.stats },
     position: null, // Party members not on grid
     binds: { head: 0, arm: 0, leg: 0 },
     ailments: {
@@ -978,6 +978,8 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       blind: 0,
     },
     isParty: true,
+    skills: member.learnedSkills,
+    buffs: [],
   }));
 
   // Create enemy entities and place on grid
@@ -992,7 +994,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       maxHp: placement.definition.maxHp,
       tp: placement.definition.maxTp,
       maxTp: placement.definition.maxTp,
-      stats: placement.definition.stats,
+      stats: { ...placement.definition.stats },
       position: placement.position,
       binds: { head: 0, arm: 0, leg: 0 },
       ailments: {
@@ -1011,6 +1013,8 @@ export function initializeCombat(encounter: EncounterData): CombatState {
         blind: 0,
       },
       isParty: false,
+      skills: placement.definition.skills,
+      buffs: [],
     };
 
     enemies.push(enemy);

@@ -140,6 +140,8 @@ function createTestEntity(overrides?: Partial<CombatEntity>): CombatEntity {
     ailments: createDefaultAilments(),
     resistances: createDefaultResistances(),
     isParty: false,
+    skills: [],
+    buffs: [],
     ...overrides,
   };
 }
@@ -1595,11 +1597,15 @@ function createTestPartyMember(overrides?: Partial<PartyMemberState>): PartyMemb
     name: 'Test Hero',
     classId: 'test-class',
     stats: createDefaultStats(),
+    baseStats: createDefaultStats(),
     maxHp: 50,
     hp: 50,
     maxTp: 20,
     tp: 20,
     level: 1,
+    xp: 0,
+    skillPoints: 0,
+    learnedSkills: [],
     equipment: {
       weapon: null,
       armor: null,
