@@ -2,6 +2,7 @@ import { useDungeonStore } from '../../stores/dungeonStore'
 import { DungeonViewport } from './DungeonViewport'
 import { DungeonHUD } from './DungeonHUD'
 import { EncounterGauge } from './EncounterGauge'
+import { EventNotification } from './EventNotification'
 import { useDirectionInput } from '../../hooks/useDirectionInput'
 
 export function DungeonScreen() {
@@ -9,6 +10,8 @@ export function DungeonScreen() {
   const floor = useDungeonStore((s) => s.floor)
   const warpToTown = useDungeonStore((s) => s.warpToTown)
   const move = useDungeonStore((s) => s.move)
+  const lastEvents = useDungeonStore((s) => s.lastEvents)
+  const clearEvents = useDungeonStore((s) => s.clearEvents)
 
   useDirectionInput(move)
 
@@ -21,10 +24,11 @@ export function DungeonScreen() {
   }
 
   return (
-    <div className="flex flex-col h-dvh">
+    <div className="flex flex-col h-dvh relative">
       <DungeonHUD floorNumber={dungeon.floorNumber} onReturnToTown={warpToTown} />
       <DungeonViewport floor={floor} dungeon={dungeon} />
       <EncounterGauge gauge={dungeon.encounterGauge} />
+      <EventNotification events={lastEvents} onDismiss={clearEvents} />
     </div>
   )
 }
