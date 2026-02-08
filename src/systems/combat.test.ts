@@ -47,8 +47,14 @@ import {
   placeHazard,
   triggerHazard,
   displaceEntity,
+  applyBind,
+  applyAilment,
+  tickStatusDurations,
+  processAilmentEffects,
+  removeSleepOnHit,
   type RNG,
 } from './combat';
+import type { ParalyzeData, SleepData, PoisonData, BlindData } from '../types/combat';
 
 // ============================================================================
 // Test Fixtures
@@ -1186,5 +1192,366 @@ describe('displaceEntity', () => {
     const result = displaceEntity(state, 'enemy-1', { direction: 'push', distance: 1 });
 
     expect(result.events).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// Bind System Tests
+// ============================================================================
+
+describe('applyBind', () => {
+  const fixedRNG = (value: number): RNG => () => value;
+
+  it('should successfully apply bind with 100% hit chance', () => {
+    const entity = createTestEntity({
+      binds: { head: 0, arm: 0, leg: 0 },
+      resistances: createDefaultResistances(),
+    });
+
+    const application = {
+      type: 'head' as const,
+      baseDuration: 3,
+      baseChance: 100,
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.0));
+
+    expect(result.applied).toBe(true);
+    expect(result.finalDuration).toBe(3);
+    expect(result.entity.binds.head).toBe(3);
+    expect(result.entity.resistances.head).toBe(20); // Increased by 20
+  });
+
+  it('should resist bind with 0% hit chance', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), head: 100 },
+    });
+
+    const application = {
+      type: 'head' as const,
+      baseDuration: 3,
+      baseChance: 100,
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.99));
+
+    expect(result.applied).toBe(false);
+    expect(result.finalDuration).toBe(0);
+    expect(result.entity.binds.head).toBe(0);
+  });
+
+  it('should reduce duration based on resistance', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), arm: 50 },
+    });
+
+    const application = {
+      type: 'arm' as const,
+      baseDuration: 5,
+      baseChance: 100,
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.0));
+
+    // Duration reduction = floor(50 / 25) = 2
+    // Final duration = max(1, 5 - 2) = 3
+    expect(result.applied).toBe(true);
+    expect(result.finalDuration).toBe(3);
+    expect(result.entity.binds.arm).toBe(3);
+  });
+
+  it('should have minimum duration of 1', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), leg: 100 },
+    });
+
+    const application = {
+      type: 'leg' as const,
+      baseDuration: 2,
+      baseChance: 150, // High enough to overcome resistance
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.0));
+
+    // Duration reduction = floor(100 / 25) = 4, but min is 1
+    expect(result.applied).toBe(true);
+    expect(result.finalDuration).toBe(1);
+    expect(result.entity.binds.leg).toBe(1);
+  });
+
+  it('should extend bind if already bound', () => {
+    const entity = createTestEntity({
+      binds: { head: 1, arm: 0, leg: 0 },
+      resistances: createDefaultResistances(),
+    });
+
+    const application = {
+      type: 'head' as const,
+      baseDuration: 3,
+      baseChance: 100,
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.0));
+
+    expect(result.entity.binds.head).toBe(3); // Extended to max(1, 3)
+  });
+
+  it('should increase resistance on successful application', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), arm: 10 },
+    });
+
+    const application = {
+      type: 'arm' as const,
+      baseDuration: 2,
+      baseChance: 100,
+    };
+
+    const result = applyBind(entity, application, fixedRNG(0.0));
+
+    expect(result.entity.resistances.arm).toBe(30); // 10 + 20
+  });
+});
+
+// ============================================================================
+// Ailment System Tests
+// ============================================================================
+
+describe('applyAilment', () => {
+  const fixedRNG = (value: number): RNG => () => value;
+
+  it('should successfully apply poison ailment', () => {
+    const entity = createTestEntity({
+      resistances: createDefaultResistances(),
+    });
+
+    const poisonData: PoisonData = {
+      type: 'poison',
+      damagePerTurn: 5,
+      turnsRemaining: 3,
+    };
+
+    const result = applyAilment(entity, 'poison', poisonData, 100, fixedRNG(0.0));
+
+    expect(result.applied).toBe(true);
+    expect(result.entity.ailments.poison).toEqual(poisonData);
+    expect(result.entity.resistances.poison).toBe(20);
+  });
+
+  it('should resist ailment with high resistance', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), paralyze: 100 },
+    });
+
+    const paralyzeData: ParalyzeData = {
+      type: 'paralyze',
+      skipChance: 50,
+      turnsRemaining: 3,
+    };
+
+    const result = applyAilment(entity, 'paralyze', paralyzeData, 100, fixedRNG(0.99));
+
+    expect(result.applied).toBe(false);
+    expect(result.entity.ailments.paralyze).toBeNull();
+  });
+
+  it('should increase resistance on successful application', () => {
+    const entity = createTestEntity({
+      resistances: { ...createDefaultResistances(), sleep: 10 },
+    });
+
+    const sleepData: SleepData = {
+      type: 'sleep',
+      turnsRemaining: 2,
+    };
+
+    const result = applyAilment(entity, 'sleep', sleepData, 100, fixedRNG(0.0));
+
+    expect(result.entity.resistances.sleep).toBe(30); // 10 + 20
+  });
+});
+
+describe('tickStatusDurations', () => {
+  it('should decrement bind durations', () => {
+    const entity = createTestEntity({
+      binds: { head: 3, arm: 2, leg: 1 },
+    });
+
+    const ticked = tickStatusDurations(entity);
+
+    expect(ticked.binds.head).toBe(2);
+    expect(ticked.binds.arm).toBe(1);
+    expect(ticked.binds.leg).toBe(0);
+  });
+
+  it('should decrement poison duration', () => {
+    const poisonData: PoisonData = {
+      type: 'poison',
+      damagePerTurn: 5,
+      turnsRemaining: 3,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), poison: poisonData },
+    });
+
+    const ticked = tickStatusDurations(entity);
+
+    expect(ticked.ailments.poison?.turnsRemaining).toBe(2);
+  });
+
+  it('should remove poison when duration reaches 0', () => {
+    const poisonData: PoisonData = {
+      type: 'poison',
+      damagePerTurn: 5,
+      turnsRemaining: 1,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), poison: poisonData },
+    });
+
+    const ticked = tickStatusDurations(entity);
+
+    expect(ticked.ailments.poison).toBeNull();
+  });
+
+  it('should not go below 0 for binds', () => {
+    const entity = createTestEntity({
+      binds: { head: 0, arm: 0, leg: 0 },
+    });
+
+    const ticked = tickStatusDurations(entity);
+
+    expect(ticked.binds.head).toBe(0);
+    expect(ticked.binds.arm).toBe(0);
+    expect(ticked.binds.leg).toBe(0);
+  });
+});
+
+describe('processAilmentEffects', () => {
+  const fixedRNG = (value: number): RNG => () => value;
+
+  it('should deal poison damage', () => {
+    const poisonData: PoisonData = {
+      type: 'poison',
+      damagePerTurn: 5,
+      turnsRemaining: 3,
+    };
+
+    const entity = createTestEntity({
+      hp: 50,
+      ailments: { ...createDefaultAilments(), poison: poisonData },
+    });
+
+    const result = processAilmentEffects(entity);
+
+    expect(result.entity.hp).toBe(45); // 50 - 5
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('damage');
+    expect(result.skipTurn).toBe(false);
+  });
+
+  it('should skip turn on paralyze if RNG triggers', () => {
+    const paralyzeData: ParalyzeData = {
+      type: 'paralyze',
+      skipChance: 50,
+      turnsRemaining: 2,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), paralyze: paralyzeData },
+    });
+
+    const result = processAilmentEffects(entity, fixedRNG(0.3)); // Below 50% threshold
+
+    expect(result.skipTurn).toBe(true);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('turn-skip');
+  });
+
+  it('should not skip turn on paralyze if RNG resists', () => {
+    const paralyzeData: ParalyzeData = {
+      type: 'paralyze',
+      skipChance: 50,
+      turnsRemaining: 2,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), paralyze: paralyzeData },
+    });
+
+    const result = processAilmentEffects(entity, fixedRNG(0.8)); // Above 50% threshold
+
+    expect(result.skipTurn).toBe(false);
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('should always skip turn on sleep', () => {
+    const sleepData: SleepData = {
+      type: 'sleep',
+      turnsRemaining: 2,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), sleep: sleepData },
+    });
+
+    const result = processAilmentEffects(entity);
+
+    expect(result.skipTurn).toBe(true);
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('turn-skip');
+  });
+
+  it('should process multiple ailments', () => {
+    const poisonData: PoisonData = {
+      type: 'poison',
+      damagePerTurn: 5,
+      turnsRemaining: 3,
+    };
+
+    const sleepData: SleepData = {
+      type: 'sleep',
+      turnsRemaining: 1,
+    };
+
+    const entity = createTestEntity({
+      hp: 50,
+      ailments: { ...createDefaultAilments(), poison: poisonData, sleep: sleepData },
+    });
+
+    const result = processAilmentEffects(entity);
+
+    expect(result.entity.hp).toBe(45); // Poison damage
+    expect(result.skipTurn).toBe(true); // Sleep
+    expect(result.events.length).toBeGreaterThanOrEqual(2); // Damage + skip
+  });
+});
+
+describe('removeSleepOnHit', () => {
+  it('should remove sleep ailment', () => {
+    const sleepData: SleepData = {
+      type: 'sleep',
+      turnsRemaining: 2,
+    };
+
+    const entity = createTestEntity({
+      ailments: { ...createDefaultAilments(), sleep: sleepData },
+    });
+
+    const result = removeSleepOnHit(entity);
+
+    expect(result.ailments.sleep).toBeNull();
+  });
+
+  it('should not modify entity if not asleep', () => {
+    const entity = createTestEntity({
+      ailments: createDefaultAilments(),
+    });
+
+    const result = removeSleepOnHit(entity);
+
+    expect(result).toBe(entity); // Same reference
   });
 });

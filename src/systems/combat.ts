@@ -21,6 +21,17 @@ import type {
   HazardTriggeredEvent,
   HazardPlacedEvent,
   PoisonData,
+  BindApplication,
+  BindAppliedEvent,
+  BindExpiredEvent,
+  AilmentType,
+  AilmentData,
+  ParalyzeData,
+  SleepData,
+  BlindData,
+  AilmentAppliedEvent,
+  AilmentExpiredEvent,
+  TurnSkipEvent,
 } from '../types/combat';
 
 // ============================================================================
@@ -651,4 +662,271 @@ export function displaceEntity(
   }
 
   return { state: newState, events };
+}
+
+// ============================================================================
+// Bind System
+// ============================================================================
+
+/** Result of bind application attempt */
+export interface BindApplicationResult {
+  entity: CombatEntity;
+  applied: boolean;
+  finalDuration: number;
+}
+
+/**
+ * Attempt to apply a bind to an entity
+ *
+ * Formula:
+ * - hitChance = baseChance - resistance
+ * - If hit: duration = max(1, baseDuration - floor(resistance / 25))
+ * - Increase resistance by 20 on successful application
+ */
+export function applyBind(
+  entity: CombatEntity,
+  application: BindApplication,
+  rng: RNG = defaultRNG
+): BindApplicationResult {
+  const resistance = entity.resistances[application.type];
+  const hitChance = Math.max(0, application.baseChance - resistance);
+
+  // Roll for application
+  const roll = rng() * 100;
+  if (roll >= hitChance) {
+    // Resisted
+    return {
+      entity,
+      applied: false,
+      finalDuration: 0,
+    };
+  }
+
+  // Calculate duration with resistance scaling
+  const durationReduction = Math.floor(resistance / 25);
+  const finalDuration = Math.max(1, application.baseDuration - durationReduction);
+
+  // Apply bind
+  const boundEntity: CombatEntity = {
+    ...entity,
+    binds: {
+      ...entity.binds,
+      [application.type]: Math.max(entity.binds[application.type], finalDuration),
+    },
+    resistances: {
+      ...entity.resistances,
+      [application.type]: resistance + 20,
+    },
+  };
+
+  return {
+    entity: boundEntity,
+    applied: true,
+    finalDuration,
+  };
+}
+
+// ============================================================================
+// Ailment System
+// ============================================================================
+
+/** Result of ailment application attempt */
+export interface AilmentApplicationResult {
+  entity: CombatEntity;
+  applied: boolean;
+}
+
+/**
+ * Attempt to apply an ailment to an entity
+ */
+export function applyAilment(
+  entity: CombatEntity,
+  ailmentType: AilmentType,
+  ailmentData: AilmentData,
+  baseChance: number,
+  rng: RNG = defaultRNG
+): AilmentApplicationResult {
+  const resistance = entity.resistances[ailmentType];
+  const hitChance = Math.max(0, baseChance - resistance);
+
+  // Roll for application
+  const roll = rng() * 100;
+  if (roll >= hitChance) {
+    // Resisted
+    return {
+      entity,
+      applied: false,
+    };
+  }
+
+  // Apply ailment
+  const ailmentedEntity: CombatEntity = {
+    ...entity,
+    ailments: {
+      ...entity.ailments,
+      [ailmentType]: ailmentData,
+    },
+    resistances: {
+      ...entity.resistances,
+      [ailmentType]: resistance + 20,
+    },
+  };
+
+  return {
+    entity: ailmentedEntity,
+    applied: true,
+  };
+}
+
+/**
+ * Tick status durations at end of turn
+ * Decrements bind and ailment counters
+ */
+export function tickStatusDurations(entity: CombatEntity): CombatEntity {
+  // Tick bind durations
+  const newBinds = {
+    head: Math.max(0, entity.binds.head - 1),
+    arm: Math.max(0, entity.binds.arm - 1),
+    leg: Math.max(0, entity.binds.leg - 1),
+  };
+
+  // Tick ailment durations
+  const newAilments = { ...entity.ailments };
+
+  if (newAilments.poison) {
+    const newTurns = newAilments.poison.turnsRemaining - 1;
+    newAilments.poison =
+      newTurns > 0
+        ? {
+            ...newAilments.poison,
+            turnsRemaining: newTurns,
+          }
+        : null;
+  }
+
+  if (newAilments.paralyze) {
+    const newTurns = newAilments.paralyze.turnsRemaining - 1;
+    newAilments.paralyze =
+      newTurns > 0
+        ? {
+            ...newAilments.paralyze,
+            turnsRemaining: newTurns,
+          }
+        : null;
+  }
+
+  if (newAilments.sleep) {
+    const newTurns = newAilments.sleep.turnsRemaining - 1;
+    newAilments.sleep =
+      newTurns > 0
+        ? {
+            ...newAilments.sleep,
+            turnsRemaining: newTurns,
+          }
+        : null;
+  }
+
+  if (newAilments.blind) {
+    const newTurns = newAilments.blind.turnsRemaining - 1;
+    newAilments.blind =
+      newTurns > 0
+        ? {
+            ...newAilments.blind,
+            turnsRemaining: newTurns,
+          }
+        : null;
+  }
+
+  return {
+    ...entity,
+    binds: newBinds,
+    ailments: newAilments,
+  };
+}
+
+/** Result of processing ailment effects */
+export interface AilmentEffectsResult {
+  entity: CombatEntity;
+  events: CombatEventUnion[];
+  skipTurn: boolean;
+}
+
+/**
+ * Process ailment effects at start of turn
+ * - Poison: deal damage
+ * - Paralyze: chance to skip turn
+ * - Sleep: skip turn (removed on damage)
+ * - Blind: accuracy penalty (applied in damage calc, not here)
+ */
+export function processAilmentEffects(
+  entity: CombatEntity,
+  rng: RNG = defaultRNG
+): AilmentEffectsResult {
+  const events: CombatEventUnion[] = [];
+  let newEntity = { ...entity };
+  let skipTurn = false;
+
+  // Process poison damage
+  if (newEntity.ailments.poison) {
+    const poisonDamage = newEntity.ailments.poison.damagePerTurn;
+    newEntity = applyDamage(newEntity, poisonDamage);
+
+    const damageEvent: DamageEvent = {
+      type: 'damage',
+      timestamp: Date.now(),
+      targetId: entity.id,
+      damage: poisonDamage,
+      isCrit: false,
+      killed: newEntity.hp === 0,
+    };
+    events.push(damageEvent);
+  }
+
+  // Process paralyze turn skip
+  if (newEntity.ailments.paralyze) {
+    const skipChance = newEntity.ailments.paralyze.skipChance / 100;
+    if (rng() < skipChance) {
+      skipTurn = true;
+      const skipEvent: TurnSkipEvent = {
+        type: 'turn-skip',
+        timestamp: Date.now(),
+        entityId: entity.id,
+        reason: 'paralyze',
+      };
+      events.push(skipEvent);
+    }
+  }
+
+  // Process sleep turn skip
+  if (newEntity.ailments.sleep) {
+    skipTurn = true;
+    const skipEvent: TurnSkipEvent = {
+      type: 'turn-skip',
+      timestamp: Date.now(),
+      entityId: entity.id,
+      reason: 'sleep',
+    };
+    events.push(skipEvent);
+  }
+
+  return {
+    entity: newEntity,
+    events,
+    skipTurn,
+  };
+}
+
+/**
+ * Remove sleep ailment when entity takes damage
+ */
+export function removeSleepOnHit(entity: CombatEntity): CombatEntity {
+  if (!entity.ailments.sleep) return entity;
+
+  return {
+    ...entity,
+    ailments: {
+      ...entity.ailments,
+      sleep: null,
+    },
+  };
 }
