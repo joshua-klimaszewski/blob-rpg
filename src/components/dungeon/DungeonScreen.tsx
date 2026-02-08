@@ -1,32 +1,34 @@
-import { useGameStore } from '../../stores/gameStore'
+import { useDungeonStore } from '../../stores/dungeonStore'
+import { DungeonViewport } from './DungeonViewport'
+import { DungeonHUD } from './DungeonHUD'
+import { EncounterGauge } from './EncounterGauge'
+import { EventNotification } from './EventNotification'
+import { useDirectionInput } from '../../hooks/useDirectionInput'
 
 export function DungeonScreen() {
-  const setScreen = useGameStore((s) => s.setScreen)
+  const dungeon = useDungeonStore((s) => s.dungeon)
+  const floor = useDungeonStore((s) => s.floor)
+  const warpToTown = useDungeonStore((s) => s.warpToTown)
+  const move = useDungeonStore((s) => s.move)
+  const lastEvents = useDungeonStore((s) => s.lastEvents)
+  const clearEvents = useDungeonStore((s) => s.clearEvents)
+
+  useDirectionInput(move)
+
+  if (!dungeon || !floor) {
+    return (
+      <div className="flex items-center justify-center min-h-dvh">
+        <span className="text-gray-400">No dungeon loaded</span>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col items-center gap-6 p-6">
-      <h1 className="text-2xl font-bold border-b-2 border-ink pb-2">
-        Dungeon — F1
-      </h1>
-
-      <div className="w-full max-w-xs aspect-square border-2 border-ink flex items-center justify-center">
-        <span className="text-gray-400">[ Grid will render here ]</span>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          onClick={() => setScreen('combat')}
-          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          Fight!
-        </button>
-        <button
-          onClick={() => setScreen('town')}
-          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          Return to Town
-        </button>
-      </div>
+    <div className="flex flex-col h-dvh relative">
+      <DungeonHUD floorNumber={dungeon.floorNumber} onReturnToTown={warpToTown} />
+      <DungeonViewport floor={floor} dungeon={dungeon} />
+      <EncounterGauge gauge={dungeon.encounterGauge} />
+      <EventNotification events={lastEvents} onDismiss={clearEvents} />
     </div>
   )
 }
