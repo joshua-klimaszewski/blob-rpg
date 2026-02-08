@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import type {
-  GridPosition,
   BattleTile,
   CombatEntity,
   CombatState,
@@ -66,13 +65,10 @@ import type {
   ParalyzeData,
   SleepData,
   PoisonData,
-  BlindData,
   EncounterData,
   EnemyDefinition,
   PartyMemberState,
   AttackAction,
-  DefendAction,
-  FleeAction,
 } from '../types/combat';
 
 // ============================================================================
@@ -1037,7 +1033,7 @@ describe('placeHazard', () => {
 
   it('should not mutate original grid', () => {
     const grid = createEmptyGrid();
-    const newGrid = placeHazard(grid, [1, 1], 'fire');
+    placeHazard(grid, [1, 1], 'fire');
 
     const originalTile = getTile(grid, [1, 1]);
     expect(originalTile?.hazard).toBeNull();
@@ -1786,7 +1782,7 @@ describe('executeFlee', () => {
 
   it('should succeed with good RNG', () => {
     const state = createTestState();
-    const result = executeFlee(state, 'party-1', fixedRNG(0.3)); // < 0.5
+    const result = executeFlee(state, fixedRNG(0.3)); // < 0.5
 
     expect(result.events).toHaveLength(1);
     expect(result.events[0].type).toBe('flee-success');
@@ -1795,7 +1791,7 @@ describe('executeFlee', () => {
 
   it('should fail with bad RNG', () => {
     const state = createTestState();
-    const result = executeFlee(state, 'party-1', fixedRNG(0.8)); // >= 0.5
+    const result = executeFlee(state, fixedRNG(0.8)); // >= 0.5
 
     expect(result.events).toHaveLength(1);
     expect(result.events[0].type).toBe('flee-failed');

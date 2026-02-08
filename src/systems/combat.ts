@@ -19,25 +19,15 @@ import type {
   HazardType,
   DisplacementEvent,
   HazardTriggeredEvent,
-  HazardPlacedEvent,
   PoisonData,
   BindApplication,
-  BindAppliedEvent,
-  BindExpiredEvent,
   AilmentType,
   AilmentData,
-  ParalyzeData,
-  SleepData,
-  BlindData,
-  AilmentAppliedEvent,
-  AilmentExpiredEvent,
   TurnSkipEvent,
   EncounterData,
   TurnEntry,
   Action,
   AttackAction,
-  DefendAction,
-  FleeAction,
   VictoryEvent,
   DefeatEvent,
   FleeSuccessEvent,
@@ -537,8 +527,7 @@ export function placeHazard(
  */
 export function triggerHazard(
   entity: CombatEntity,
-  hazard: HazardType,
-  rng: RNG = defaultRNG
+  hazard: HazardType
 ): { entity: CombatEntity; events: CombatEventUnion[] } {
   const events: CombatEventUnion[] = [];
 
@@ -607,8 +596,7 @@ export interface DisplacementResult {
 export function displaceEntity(
   state: CombatState,
   entityId: string,
-  effect: DisplacementEffect,
-  rng: RNG = defaultRNG
+  effect: DisplacementEffect
 ): DisplacementResult {
   const entity = findEntity(state, entityId);
   if (!entity || !isAlive(entity)) {
@@ -658,7 +646,7 @@ export function displaceEntity(
   // Check for hazard at new position
   const tile = getTile(newGrid, newPos);
   if (tile?.hazard) {
-    const hazardResult = triggerHazard(movedEntity, tile.hazard, rng);
+    const hazardResult = triggerHazard(movedEntity, tile.hazard);
     newState = updateEntity(newState, entityId, hazardResult.entity);
 
     const hazardEvent: HazardTriggeredEvent = {
@@ -1120,7 +1108,7 @@ export function executeDefend(state: CombatState, actorId: string): ActionResult
  * Execute flee action
  * MVP: 50% chance, modified by leg bind check already done in canFlee
  */
-export function executeFlee(state: CombatState, actorId: string, rng: RNG = defaultRNG): ActionResult {
+export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionResult {
   // Simple 50% chance
   const success = rng() < 0.5;
 
@@ -1176,7 +1164,7 @@ export function executeAction(
     }
 
     case 'flee': {
-      result = executeFlee(state, action.actorId, rng);
+      result = executeFlee(state, rng);
       break;
     }
 
