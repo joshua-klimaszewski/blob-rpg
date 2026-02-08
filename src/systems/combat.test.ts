@@ -52,9 +52,28 @@ import {
   tickStatusDurations,
   processAilmentEffects,
   removeSleepOnHit,
+  initializeCombat,
+  checkVictoryDefeat,
+  resetComboCounter,
+  processTurnEnd,
+  executeDefend,
+  executeFlee,
+  executeAction,
+  calculateRewards,
   type RNG,
 } from './combat';
-import type { ParalyzeData, SleepData, PoisonData, BlindData } from '../types/combat';
+import type {
+  ParalyzeData,
+  SleepData,
+  PoisonData,
+  BlindData,
+  EncounterData,
+  EnemyDefinition,
+  PartyMemberState,
+  AttackAction,
+  DefendAction,
+  FleeAction,
+} from '../types/combat';
 
 // ============================================================================
 // Test Fixtures
@@ -1553,5 +1572,401 @@ describe('removeSleepOnHit', () => {
     const result = removeSleepOnHit(entity);
 
     expect(result).toBe(entity); // Same reference
+  });
+});
+
+// ============================================================================
+// Combat State Machine Tests
+// ============================================================================
+
+function createTestEnemyDefinition(overrides?: Partial<EnemyDefinition>): EnemyDefinition {
+  return {
+    id: 'test-enemy',
+    name: 'Test Enemy',
+    stats: createDefaultStats(),
+    maxHp: 30,
+    maxTp: 10,
+    skills: [],
+    aiPattern: 'aggressive',
+    dropTable: { materials: [], xp: 20 },
+    ...overrides,
+  };
+}
+
+function createTestPartyMember(overrides?: Partial<PartyMemberState>): PartyMemberState {
+  return {
+    id: 'party-1',
+    name: 'Test Hero',
+    classId: 'test-class',
+    stats: createDefaultStats(),
+    maxHp: 50,
+    hp: 50,
+    maxTp: 20,
+    tp: 20,
+    level: 1,
+    equipment: {
+      weapon: null,
+      armor: null,
+      accessory1: null,
+      accessory2: null,
+    },
+    ...overrides,
+  };
+}
+
+describe('initializeCombat', () => {
+  it('should initialize combat state from encounter', () => {
+    const encounter: EncounterData = {
+      party: [createTestPartyMember({ id: 'party-1' })],
+      enemies: [
+        {
+          definition: createTestEnemyDefinition(),
+          instanceId: 'enemy-1',
+          position: [1, 1],
+        },
+      ],
+      canFlee: true,
+    };
+
+    const state = initializeCombat(encounter);
+
+    expect(state.phase).toBe('active');
+    expect(state.party).toHaveLength(1);
+    expect(state.enemies).toHaveLength(1);
+    expect(state.canFlee).toBe(true);
+    expect(state.comboCounter).toBe(0);
+  });
+
+  it('should place enemies on grid', () => {
+    const encounter: EncounterData = {
+      party: [createTestPartyMember()],
+      enemies: [
+        {
+          definition: createTestEnemyDefinition(),
+          instanceId: 'enemy-1',
+          position: [0, 0],
+        },
+        {
+          definition: createTestEnemyDefinition(),
+          instanceId: 'enemy-2',
+          position: [2, 2],
+        },
+      ],
+      canFlee: true,
+    };
+
+    const state = initializeCombat(encounter);
+
+    expect(getEntitiesAtTile(state.grid, [0, 0])).toContain('enemy-1');
+    expect(getEntitiesAtTile(state.grid, [2, 2])).toContain('enemy-2');
+  });
+
+  it('should create turn order sorted by speed', () => {
+    const encounter: EncounterData = {
+      party: [
+        createTestPartyMember({ id: 'party-1', stats: { ...createDefaultStats(), agi: 15 } }),
+      ],
+      enemies: [
+        {
+          definition: createTestEnemyDefinition({ stats: { ...createDefaultStats(), agi: 5 } }),
+          instanceId: 'enemy-1',
+          position: [1, 1],
+        },
+      ],
+      canFlee: true,
+    };
+
+    const state = initializeCombat(encounter);
+
+    expect(state.turnOrder).toHaveLength(2);
+    expect(state.turnOrder[0].entityId).toBe('party-1'); // Faster goes first
+    expect(state.turnOrder[1].entityId).toBe('enemy-1');
+  });
+
+  it('should initialize all entities with zero status effects', () => {
+    const encounter: EncounterData = {
+      party: [createTestPartyMember()],
+      enemies: [
+        {
+          definition: createTestEnemyDefinition(),
+          instanceId: 'enemy-1',
+          position: [1, 1],
+        },
+      ],
+      canFlee: false,
+    };
+
+    const state = initializeCombat(encounter);
+
+    for (const entity of [...state.party, ...state.enemies]) {
+      expect(entity.binds).toEqual({ head: 0, arm: 0, leg: 0 });
+      expect(entity.ailments.poison).toBeNull();
+      expect(entity.ailments.paralyze).toBeNull();
+      expect(entity.ailments.sleep).toBeNull();
+      expect(entity.ailments.blind).toBeNull();
+    }
+  });
+});
+
+describe('checkVictoryDefeat', () => {
+  it('should return victory if all enemies dead', () => {
+    const state = createTestState({
+      party: [createTestEntity({ hp: 50, isParty: true })],
+      enemies: [createTestEntity({ hp: 0 })],
+    });
+
+    const result = checkVictoryDefeat(state);
+    expect(result.victory).toBe(true);
+    expect(result.defeat).toBe(false);
+  });
+
+  it('should return defeat if all party dead', () => {
+    const state = createTestState({
+      party: [createTestEntity({ hp: 0, isParty: true })],
+      enemies: [createTestEntity({ hp: 50 })],
+    });
+
+    const result = checkVictoryDefeat(state);
+    expect(result.victory).toBe(false);
+    expect(result.defeat).toBe(true);
+  });
+
+  it('should return no victory/defeat if both sides alive', () => {
+    const state = createTestState({
+      party: [createTestEntity({ hp: 50, isParty: true })],
+      enemies: [createTestEntity({ hp: 30 })],
+    });
+
+    const result = checkVictoryDefeat(state);
+    expect(result.victory).toBe(false);
+    expect(result.defeat).toBe(false);
+  });
+});
+
+describe('resetComboCounter', () => {
+  it('should reset combo counter to 0', () => {
+    const state = createTestState({ comboCounter: 5 });
+    const result = resetComboCounter(state);
+
+    expect(result.comboCounter).toBe(0);
+  });
+});
+
+describe('processTurnEnd', () => {
+  it('should tick status durations for entity', () => {
+    const entity = createTestEntity({
+      id: 'test-entity',
+      binds: { head: 2, arm: 1, leg: 0 },
+    });
+
+    const state = createTestState({ enemies: [entity] });
+    const result = processTurnEnd(state, 'test-entity');
+
+    const updatedEntity = findEntity(result.state, 'test-entity')!;
+    expect(updatedEntity.binds.head).toBe(1);
+    expect(updatedEntity.binds.arm).toBe(0);
+  });
+});
+
+describe('executeDefend', () => {
+  it('should set defending flag on turn entry', () => {
+    const turnOrder = [
+      { entityId: 'party-1', speed: 10, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({ turnOrder });
+    const result = executeDefend(state, 'party-1');
+
+    expect(result.state.turnOrder[0].isDefending).toBe(true);
+  });
+});
+
+describe('executeFlee', () => {
+  const fixedRNG = (value: number): RNG => () => value;
+
+  it('should succeed with good RNG', () => {
+    const state = createTestState();
+    const result = executeFlee(state, 'party-1', fixedRNG(0.3)); // < 0.5
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('flee-success');
+    expect(result.state.phase).toBe('defeat'); // Exit combat
+  });
+
+  it('should fail with bad RNG', () => {
+    const state = createTestState();
+    const result = executeFlee(state, 'party-1', fixedRNG(0.8)); // >= 0.5
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0].type).toBe('flee-failed');
+    expect(result.state.phase).toBe('active');
+  });
+});
+
+describe('executeAction', () => {
+  it('should execute attack action', () => {
+    const attacker = createTestEntity({ id: 'party-1', isParty: true });
+    const defender = createTestEntity({ id: 'enemy-1', hp: 50 });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+    });
+
+    const action: AttackAction = {
+      actorId: 'party-1',
+      type: 'attack',
+      targetTile: [1, 1],
+    };
+
+    const result = executeAction(state, action);
+
+    expect(result.events.length).toBeGreaterThan(0);
+    expect(result.events[0].type).toBe('damage');
+  });
+
+  it('should execute defend action via executeDefend directly', () => {
+    const state = createTestState({
+      turnOrder: [{ entityId: 'party-1', speed: 10, hasActed: false, isDefending: false }],
+    });
+
+    const result = executeDefend(state, 'party-1');
+    expect(result.state.turnOrder[0].isDefending).toBe(true);
+  });
+
+  it('should detect victory and transition to victory phase', () => {
+    const attacker = createTestEntity({
+      id: 'party-1',
+      isParty: true,
+      stats: { str: 100, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({ id: 'enemy-1', hp: 1 }); // Will die
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+    });
+
+    const action: AttackAction = {
+      actorId: 'party-1',
+      type: 'attack',
+      targetTile: [1, 1],
+    };
+
+    const result = executeAction(state, action);
+
+    expect(result.state.phase).toBe('victory');
+    const victoryEvent = result.events.find((e) => e.type === 'victory');
+    expect(victoryEvent).toBeDefined();
+  });
+
+  it('should detect defeat and transition to defeat phase', () => {
+    const attacker = createTestEntity({
+      id: 'enemy-1',
+      isParty: false,
+      stats: { str: 100, vit: 10, int: 10, wis: 10, agi: 10, luc: 0 },
+    });
+    const defender = createTestEntity({ id: 'party-1', hp: 1, isParty: true }); // Will die
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'party-1', [1, 1]);
+
+    const state = createTestState({
+      party: [defender],
+      enemies: [attacker],
+      grid,
+    });
+
+    const action: AttackAction = {
+      actorId: 'enemy-1',
+      type: 'attack',
+      targetTile: [1, 1],
+    };
+
+    const result = executeAction(state, action);
+
+    expect(result.state.phase).toBe('defeat');
+    const defeatEvent = result.events.find((e) => e.type === 'defeat');
+    expect(defeatEvent).toBeDefined();
+  });
+
+  it('should mark actor as having acted', () => {
+    const attacker = createTestEntity({ id: 'party-1', isParty: true });
+    const defender = createTestEntity({ id: 'enemy-1', hp: 50 });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'enemy-1', [1, 1]);
+
+    const turnOrder = [
+      { entityId: 'party-1', speed: 10, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [attacker],
+      enemies: [defender],
+      grid,
+      turnOrder,
+    });
+
+    const action: AttackAction = {
+      actorId: 'party-1',
+      type: 'attack',
+      targetTile: [1, 1],
+    };
+
+    const result = executeAction(state, action);
+    expect(result.state.turnOrder[0].hasActed).toBe(true);
+  });
+
+  it('should return no events if actor is dead', () => {
+    const attacker = createTestEntity({ id: 'party-1', hp: 0, isParty: true });
+
+    const state = createTestState({ party: [attacker] });
+
+    const action: AttackAction = {
+      actorId: 'party-1',
+      type: 'attack',
+      targetTile: [1, 1],
+    };
+
+    const result = executeAction(state, action);
+    expect(result.events).toHaveLength(0);
+  });
+});
+
+describe('calculateRewards', () => {
+  it('should calculate XP from defeated enemies', () => {
+    const state = createTestState({
+      enemies: [
+        createTestEntity({ hp: 0 }), // Dead
+        createTestEntity({ hp: 0 }), // Dead
+      ],
+    });
+
+    const rewards = calculateRewards(state);
+
+    // MVP: 100 base + 20 per enemy
+    expect(rewards.xp).toBe(140); // 100 + 20 + 20
+    expect(rewards.materials).toEqual([]);
+  });
+
+  it('should only count defeated enemies', () => {
+    const state = createTestState({
+      enemies: [
+        createTestEntity({ hp: 0 }), // Dead
+        createTestEntity({ hp: 50 }), // Alive
+      ],
+    });
+
+    const rewards = calculateRewards(state);
+    expect(rewards.xp).toBe(120); // 100 + 20 (only one enemy)
   });
 });

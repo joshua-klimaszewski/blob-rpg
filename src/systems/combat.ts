@@ -32,6 +32,17 @@ import type {
   AilmentAppliedEvent,
   AilmentExpiredEvent,
   TurnSkipEvent,
+  EncounterData,
+  TurnEntry,
+  Action,
+  AttackAction,
+  DefendAction,
+  FleeAction,
+  VictoryEvent,
+  DefeatEvent,
+  FleeSuccessEvent,
+  FleeFailedEvent,
+  CombatRewards,
 } from '../types/combat';
 
 // ============================================================================
@@ -928,5 +939,308 @@ export function removeSleepOnHit(entity: CombatEntity): CombatEntity {
       ...entity.ailments,
       sleep: null,
     },
+  };
+}
+
+// ============================================================================
+// Combat State Machine
+// ============================================================================
+
+/**
+ * Initialize combat state from encounter data
+ */
+export function initializeCombat(encounter: EncounterData): CombatState {
+  // Create empty 3x3 grid
+  const grid: BattleTile[][] = [];
+  for (let row = 0; row < 3; row++) {
+    grid[row] = [];
+    for (let col = 0; col < 3; col++) {
+      grid[row][col] = {
+        position: [row, col],
+        entities: [],
+        hazard: null,
+      };
+    }
+  }
+
+  // Create party entities
+  const party: CombatEntity[] = encounter.party.map((member) => ({
+    id: member.id,
+    name: member.name,
+    hp: member.hp,
+    maxHp: member.maxHp,
+    tp: member.tp,
+    maxTp: member.maxTp,
+    stats: member.stats,
+    position: null, // Party members not on grid
+    binds: { head: 0, arm: 0, leg: 0 },
+    ailments: {
+      poison: null,
+      paralyze: null,
+      sleep: null,
+      blind: null,
+    },
+    resistances: {
+      head: 0,
+      arm: 0,
+      leg: 0,
+      poison: 0,
+      paralyze: 0,
+      sleep: 0,
+      blind: 0,
+    },
+    isParty: true,
+  }));
+
+  // Create enemy entities and place on grid
+  const enemies: CombatEntity[] = [];
+  let gridWithEnemies = grid;
+
+  for (const placement of encounter.enemies) {
+    const enemy: CombatEntity = {
+      id: placement.instanceId,
+      name: placement.definition.name,
+      hp: placement.definition.maxHp,
+      maxHp: placement.definition.maxHp,
+      tp: placement.definition.maxTp,
+      maxTp: placement.definition.maxTp,
+      stats: placement.definition.stats,
+      position: placement.position,
+      binds: { head: 0, arm: 0, leg: 0 },
+      ailments: {
+        poison: null,
+        paralyze: null,
+        sleep: null,
+        blind: null,
+      },
+      resistances: {
+        head: 0,
+        arm: 0,
+        leg: 0,
+        poison: 0,
+        paralyze: 0,
+        sleep: 0,
+        blind: 0,
+      },
+      isParty: false,
+    };
+
+    enemies.push(enemy);
+    gridWithEnemies = addEntityToTile(gridWithEnemies, enemy.id, placement.position);
+  }
+
+  // Create turn order sorted by speed
+  const allEntities = [...party, ...enemies];
+  const sortedEntities = sortBySpeed(allEntities);
+
+  const turnOrder: TurnEntry[] = sortedEntities.map((entity) => ({
+    entityId: entity.id,
+    speed: calculateSpeed(entity),
+    hasActed: false,
+    isDefending: false,
+  }));
+
+  return {
+    phase: 'active',
+    turnOrder,
+    currentActorIndex: 0,
+    party,
+    enemies,
+    grid: gridWithEnemies,
+    comboCounter: 0,
+    canFlee: encounter.canFlee,
+  };
+}
+
+/**
+ * Check victory/defeat conditions
+ */
+export function checkVictoryDefeat(state: CombatState): {
+  victory: boolean;
+  defeat: boolean;
+} {
+  return {
+    victory: isAllEnemiesDefeated(state),
+    defeat: isPartyWiped(state),
+  };
+}
+
+/**
+ * Reset combo counter (call at end of turn)
+ */
+export function resetComboCounter(state: CombatState): CombatState {
+  return {
+    ...state,
+    comboCounter: 0,
+  };
+}
+
+/**
+ * Process turn end for an entity
+ * Ticks status durations
+ */
+export function processTurnEnd(
+  state: CombatState,
+  entityId: string
+): { state: CombatState; events: CombatEventUnion[] } {
+  const entity = findEntity(state, entityId);
+  if (!entity) {
+    return { state, events: [] };
+  }
+
+  const tickedEntity = tickStatusDurations(entity);
+  const newState = updateEntity(state, entityId, tickedEntity);
+
+  return { state: newState, events: [] };
+}
+
+/** Result of action execution */
+export interface ActionResult {
+  state: CombatState;
+  events: CombatEventUnion[];
+}
+
+/**
+ * Execute defend action
+ * Sets defending flag for damage reduction (applied in future damage calc)
+ */
+export function executeDefend(state: CombatState, actorId: string): ActionResult {
+  // Set defending flag on turn entry
+  const newTurnOrder = state.turnOrder.map((entry) =>
+    entry.entityId === actorId ? { ...entry, isDefending: true } : entry
+  );
+
+  return {
+    state: { ...state, turnOrder: newTurnOrder },
+    events: [],
+  };
+}
+
+/**
+ * Execute flee action
+ * MVP: 50% chance, modified by leg bind check already done in canFlee
+ */
+export function executeFlee(state: CombatState, actorId: string, rng: RNG = defaultRNG): ActionResult {
+  // Simple 50% chance
+  const success = rng() < 0.5;
+
+  if (success) {
+    const event: FleeSuccessEvent = {
+      type: 'flee-success',
+      timestamp: Date.now(),
+    };
+    return {
+      state: { ...state, phase: 'defeat' }, // Treat as "defeat" to exit combat
+      events: [event],
+    };
+  } else {
+    const event: FleeFailedEvent = {
+      type: 'flee-failed',
+      timestamp: Date.now(),
+    };
+    return {
+      state,
+      events: [event],
+    };
+  }
+}
+
+/**
+ * Execute a combat action
+ * Routes to specific action handlers, checks victory/defeat, advances turn
+ */
+export function executeAction(
+  state: CombatState,
+  action: Action,
+  rng: RNG = defaultRNG
+): ActionResult {
+  // Validate actor is alive
+  const actor = findEntity(state, action.actorId);
+  if (!actor || !isAlive(actor)) {
+    return { state, events: [] };
+  }
+
+  let result: ActionResult = { state, events: [] };
+
+  // Route to action handler
+  switch (action.type) {
+    case 'attack': {
+      const attackAction = action as AttackAction;
+      result = executeAttack(state, action.actorId, attackAction.targetTile, rng);
+      break;
+    }
+
+    case 'defend': {
+      result = executeDefend(state, action.actorId);
+      break;
+    }
+
+    case 'flee': {
+      result = executeFlee(state, action.actorId, rng);
+      break;
+    }
+
+    case 'skill':
+    case 'item':
+      // MVP: Not implemented yet
+      return { state, events: [] };
+
+    default:
+      return { state, events: [] };
+  }
+
+  // Check victory/defeat
+  const { victory, defeat } = checkVictoryDefeat(result.state);
+
+  if (victory) {
+    const victoryEvent: VictoryEvent = {
+      type: 'victory',
+      timestamp: Date.now(),
+    };
+    return {
+      state: { ...result.state, phase: 'victory' },
+      events: [...result.events, victoryEvent],
+    };
+  }
+
+  if (defeat) {
+    const defeatEvent: DefeatEvent = {
+      type: 'defeat',
+      timestamp: Date.now(),
+    };
+    return {
+      state: { ...result.state, phase: 'defeat' },
+      events: [...result.events, defeatEvent],
+    };
+  }
+
+  // Mark actor as having acted
+  const newTurnOrder = result.state.turnOrder.map((entry) =>
+    entry.entityId === action.actorId ? { ...entry, hasActed: true } : entry
+  );
+
+  return {
+    state: { ...result.state, turnOrder: newTurnOrder },
+    events: result.events,
+  };
+}
+
+/**
+ * Calculate combat rewards after victory
+ */
+export function calculateRewards(state: CombatState): CombatRewards {
+  // MVP: Fixed 100 XP, no material drops
+  let totalXp = 100;
+
+  // Add XP from defeated enemies
+  for (const enemy of state.enemies) {
+    if (!isAlive(enemy)) {
+      totalXp += 20; // MVP: fixed 20 XP per enemy
+    }
+  }
+
+  return {
+    xp: totalXp,
+    materials: [],
   };
 }
