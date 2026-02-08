@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { DungeonState, FloorData } from '../../types/dungeon'
 import { DungeonGrid } from './DungeonGrid'
+import { Minimap } from './Minimap'
 
 interface DungeonViewportProps {
   floor: FloorData
@@ -29,9 +30,12 @@ export function DungeonViewport({ floor, dungeon }: DungeonViewportProps) {
     return () => observer.disconnect()
   }, [updateSize])
 
-  // Cell size: show ~7 tiles across the viewport width
-  const cellSize = viewportSize.width > 0
-    ? Math.floor(viewportSize.width / 7)
+  // Cell size: show ~7 tiles across the shorter axis
+  const TILES_PER_SHORT_AXIS = 7
+  const MIN_CELL_SIZE = 40
+
+  const cellSize = viewportSize.width > 0 && viewportSize.height > 0
+    ? Math.max(MIN_CELL_SIZE, Math.floor(Math.min(viewportSize.width, viewportSize.height) / TILES_PER_SHORT_AXIS))
     : 48
 
   // Camera: center the grid so the player tile is in the middle of the viewport
@@ -60,6 +64,7 @@ export function DungeonViewport({ floor, dungeon }: DungeonViewportProps) {
       >
         <DungeonGrid floor={floor} dungeon={dungeon} cellSize={cellSize} />
       </div>
+      <Minimap floor={floor} dungeon={dungeon} />
     </div>
   )
 }

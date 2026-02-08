@@ -71,13 +71,17 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - ~~Conditional skill logic: "if target has N binds, deal Nx damage"~~ — deferred to Phase 4 (skill system)
 - ~~Enemy AI: weighted random action selection~~ — deferred to Phase 4 (basic random AI for MVP)
 
-**Phase 3b UI Polish (Next):**
-- [ ] 3x3 grid renderer with tap-to-target interaction
-- [ ] Action menu UI (Attack/Defend/Flee buttons with disable states)
-- [ ] Turn order timeline component
-- [ ] Damage number popups and animations
-- [ ] Bind/ailment status icon display
-- [ ] Displacement animation effects
+**Phase 3b UI Polish:**
+- [x] 3x3 grid renderer with tap-to-target interaction (2026-02-08)
+- [x] Action menu UI (Attack/Defend/Flee buttons with disable states) (2026-02-08)
+- [x] Enemy AI auto-turn processing (random party member targeting) (2026-02-08)
+- [x] Turn order timeline component (2026-02-08)
+- [x] Combat HUD (round counter, combo display, flee status) (2026-02-08)
+- [x] Damage number popups and animations (2026-02-08)
+- [x] Bind/ailment status icon display (2026-02-08)
+- [x] Combat event feedback system (useCombatEvents hook) (2026-02-08)
+- [x] Victory/Defeat overlay animations (2026-02-08)
+- ~~Displacement animation effects~~ — deferred to future polish pass (highlight-only for now)
 
 ### Phase 4: Character & Class System
 
@@ -705,6 +709,129 @@ These systems were researched but intentionally excluded from MVP scope:
 **PR:** #4 — Phase 3: Combat System Implementation (open, ready for review)
 
 **Next sprint:** Phase 3b — Combat UI polish (grid renderer, action menu, animations) OR Phase 4 — Character & Class System.
+
+### Sprint 07 — Phase 3b: Combat UI Polish (2026-02-08)
+
+**Goal:** Make combat fully playable with interactive UI — grid targeting, action menu, turn timeline, damage feedback, and victory/defeat overlays.
+
+**Tasks:**
+
+**Commit 1: 3x3 Grid Renderer + Tap-to-Target**
+- [x] CombatGrid component with 3x3 CSS Grid layout (2026-02-08)
+- [x] GridTile component with enemy display, HP, hazard icons (2026-02-08)
+- [x] Tap tile to select target (highlight with inverted colors) (2026-02-08)
+- [x] Touch targets >= 44px, empty tiles grayed out (2026-02-08)
+
+**Commit 2: Action Menu + Enemy AI**
+- [x] ActionMenu component: Attack/Defend/Flee buttons (bottom-anchored) (2026-02-08)
+- [x] Attack targeting flow: tap Attack → "Select target" → tap tile → confirm (2026-02-08)
+- [x] Defend and Flee action execution (2026-02-08)
+- [x] Enemy auto-turn: executeEnemyTurn in combat.ts (attacks random alive party member) (2026-02-08)
+- [x] Auto-advance turn order with dead-actor skipping (2026-02-08)
+- [x] advanceToNext and processEnemyTurn added to combatStore (2026-02-08)
+
+**Commit 3: Turn Order Timeline + Combat HUD**
+- [x] TurnOrderTimeline: horizontal entity list sorted by speed, current actor highlighted (2026-02-08)
+- [x] Dead actors shown with strikethrough, acted actors with checkmark (2026-02-08)
+- [x] CombatHUD: round counter, combo display (highlighted when high), flee status (2026-02-08)
+
+**Commit 4: Event Feedback & Animations**
+- [x] DamageNumber component with CSS fade-up animation (2026-02-08)
+- [x] StatusIcon component for bind/ailment indicators on grid tiles (2026-02-08)
+- [x] useCombatEvents hook: processes store events into damage displays + messages (2026-02-08)
+- [x] Party damage display (red numbers next to HP bars when hit) (2026-02-08)
+- [x] Victory overlay (inverted colors, "Returning to dungeon...") (2026-02-08)
+- [x] Defeat overlay (dark background, "Returning to town...") (2026-02-08)
+- [x] CSS keyframe animations: fadeUp, overlayFadeIn (2026-02-08)
+- [x] Event message log below grid (flee success/fail, bind applied, etc.) (2026-02-08)
+
+**Test Coverage:**
+- 220 tests still passing (no regressions)
+- Build verified clean after each commit
+
+**New Files Created:**
+- `src/components/combat/CombatGrid.tsx` — 3x3 grid renderer
+- `src/components/combat/GridTile.tsx` — Individual tile with entity display
+- `src/components/combat/ActionMenu.tsx` — Attack/Defend/Flee buttons
+- `src/components/combat/CombatHUD.tsx` — Top bar with round/combo info
+- `src/components/combat/TurnOrderTimeline.tsx` — Speed-sorted entity list
+- `src/components/combat/DamageNumber.tsx` — Floating damage animation
+- `src/components/combat/StatusIcon.tsx` — Bind/ailment indicators
+- `src/hooks/useCombatEvents.ts` — Event processing hook
+
+**Modified Files:**
+- `src/components/combat/CombatScreen.tsx` — Complete rewrite with all new components
+- `src/stores/combatStore.ts` — Added processEnemyTurn, advanceToNext
+- `src/systems/combat.ts` — Added executeEnemyTurn for enemy AI
+- `src/index.css` — Added combat animation keyframes
+
+**Architecture Notes:**
+- Enemy turns auto-execute via useEffect with debounced delays (500ms think + 600ms advance)
+- Dead actors in turn order are automatically skipped
+- Damage displays use unique IDs and self-destruct after 800ms animation
+- Event messages auto-clear after 1500ms
+- Party members targeted by enemies via direct damage (not grid-based, since party isn't on the grid)
+- All new components follow B&W wireframe palette with gauge-color accents
+
+**PR:** #4 — Phase 3: Combat System Implementation (updated with UI polish)
+
+**Next sprint:** Phase 4 — Character & Class System (6 blob classes, skill trees, equipment).
+
+### Sprint 08 — Dungeon Visual Improvements: Zoom Fix, Fog of War, Minimap (2026-02-08)
+
+**Goal:** Fix the dungeon viewport zoom calculation for landscape displays, add Etrian Odyssey-style fog of war with three visibility states, and add a canvas-based minimap overlay.
+
+**Tasks:**
+
+**Zoom Fix:**
+- [x] Change cellSize calculation to use shorter axis (`Math.min(width, height) / 7`) instead of just width (2026-02-08)
+- [x] Add MIN_CELL_SIZE floor (40px) to prevent tiles from being too small (2026-02-08)
+
+**Fog of War — Types:**
+- [x] Add `TileVisibility = 'hidden' | 'explored' | 'visible'` type to `src/types/dungeon.ts` (2026-02-08)
+- [x] Add `exploredTiles: readonly string[]` to `DungeonState` for serializable fog state (2026-02-08)
+
+**Fog of War — System Logic (`src/systems/dungeon.ts`):**
+- [x] Add `positionKey(pos)` utility for "x,y" string keys (2026-02-08)
+- [x] Add `computeVisibleTiles(playerPos, floor, radius)` — BFS flood-fill within Manhattan radius 3, stops at walls (includes wall faces), respects directional walls (2026-02-08)
+- [x] Add `updateExploredTiles(current, newVisible)` — merges with stable ref optimization (2026-02-08)
+- [x] Add `getTileVisibility(x, y, visibleSet, exploredSet)` — priority: visible > explored > hidden (2026-02-08)
+- [x] Modify `initializeDungeonState()` to seed `exploredTiles` from starting position visibility (2026-02-08)
+- [x] Modify `processTurn()` to update `exploredTiles` after player movement (2026-02-08)
+
+**Fog of War — Components:**
+- [x] Update `DungeonTile.tsx` with `visibility` prop: hidden=black, explored=dimmed gray, visible=white (2026-02-08)
+- [x] Update `DungeonGrid.tsx` to compute `visibleSet` and `exploredSet` via `useMemo`, pass visibility to tiles, filter FOE tokens to only visible tiles (2026-02-08)
+
+**Fog of War — Tests:**
+- [x] Update `makeState` helper to include `exploredTiles: []` (2026-02-08)
+- [x] Add `positionKey` tests (2026-02-08)
+- [x] Add `computeVisibleTiles` tests: open floor radius, wall blocking (includes wall faces), directional wall blocking, out-of-bounds exclusion (2026-02-08)
+- [x] Add `updateExploredTiles` tests: merge, deduplication, stable ref when unchanged (2026-02-08)
+- [x] Add `getTileVisibility` tests: priority ordering (visible > explored > hidden) (2026-02-08)
+- [x] Update `initializeDungeonState` test to verify `exploredTiles` is populated (2026-02-08)
+
+**Minimap:**
+- [x] Create `src/components/dungeon/Minimap.tsx` — canvas-based minimap with collapsed (4px/tile, top-right overlay) and expanded (8px/tile, full-screen dark overlay) modes (2026-02-08)
+- [x] Canvas rendering: black=hidden/wall, white=visible floor, gray=explored floor, black dot=player, gray square=visible FOE (2026-02-08)
+- [x] Integrate `<Minimap>` into `DungeonViewport.tsx` (2026-02-08)
+
+**Test Coverage:**
+- 232 tests passing (12 new fog of war tests)
+- TypeScript compiles cleanly (`tsc --noEmit`)
+
+**Files Modified:**
+- `src/components/dungeon/DungeonViewport.tsx` — zoom fix + minimap integration
+- `src/types/dungeon.ts` — `TileVisibility` type, `exploredTiles` on `DungeonState`
+- `src/systems/dungeon.ts` — 4 new visibility functions, modified init + processTurn
+- `src/systems/dungeon.test.ts` — updated helper, 12 new tests
+- `src/components/dungeon/DungeonTile.tsx` — visibility prop with 3 render states
+- `src/components/dungeon/DungeonGrid.tsx` — visibility computation, FOE filtering
+
+**Files Created:**
+- `src/components/dungeon/Minimap.tsx` — canvas minimap with collapse/expand
+
+**Next sprint:** Phase 4 — Character & Class System (6 blob classes, skill trees, equipment).
 
 ---
 

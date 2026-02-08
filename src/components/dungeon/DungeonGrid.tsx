@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import type { DungeonState, FloorData } from '../../types/dungeon'
+import { computeVisibleTiles, getTileVisibility, positionKey } from '../../systems/dungeon'
 import { DungeonTile } from './DungeonTile'
 import { PlayerToken } from './PlayerToken'
 import { FoeToken } from './FoeToken'
@@ -13,6 +15,16 @@ export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
   const gridWidth = floor.width * cellSize
   const gridHeight = floor.height * cellSize
 
+  const visibleSet = useMemo(
+    () => computeVisibleTiles(dungeon.playerPosition, floor),
+    [dungeon.playerPosition, floor],
+  )
+
+  const exploredSet = useMemo(
+    () => new Set(dungeon.exploredTiles),
+    [dungeon.exploredTiles],
+  )
+
   return (
     <div className="relative" style={{ width: gridWidth, height: gridHeight }}>
       {/* Tile grid */}
@@ -25,20 +37,26 @@ export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
       >
         {floor.tiles.flatMap((row, y) =>
           row.map((tile, x) => (
-            <DungeonTile key={`${x}-${y}`} type={tile.type} />
+            <DungeonTile
+              key={`${x}-${y}`}
+              type={tile.type}
+              visibility={getTileVisibility(x, y, visibleSet, exploredSet)}
+            />
           )),
         )}
       </div>
 
-      {/* FOE tokens */}
-      {dungeon.foes.map((foe) => (
-        <FoeToken
-          key={foe.id}
-          cellSize={cellSize}
-          gridX={foe.position.x}
-          gridY={foe.position.y}
-        />
-      ))}
+      {/* FOE tokens — only render on visible tiles */}
+      {dungeon.foes
+        .filter((foe) => visibleSet.has(positionKey(foe.position)))
+        .map((foe) => (
+          <FoeToken
+            key={foe.id}
+            cellSize={cellSize}
+            gridX={foe.position.x}
+            gridY={foe.position.y}
+          />
+        ))}
 
       {/* Player token (on top) */}
       <PlayerToken

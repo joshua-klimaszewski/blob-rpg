@@ -52,6 +52,11 @@ export interface FloorData {
   readonly encounterVariance: [number, number]
 }
 
+// ---- Fog of war ----
+
+/** Visibility state of a tile for fog of war */
+export type TileVisibility = 'hidden' | 'explored' | 'visible'
+
 // ---- Runtime state ----
 
 /** Runtime state of a single FOE on the floor */
@@ -89,6 +94,8 @@ export interface DungeonState {
   readonly facing: Direction
   /** Whether the dungeon is currently processing a turn */
   readonly processing: boolean
+  /** Tiles the player has previously seen (string keys like "x,y") */
+  readonly exploredTiles: readonly string[]
 }
 
 // ---- Events ----

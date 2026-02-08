@@ -8,6 +8,7 @@ import type {
   GaugeZone,
   Position,
   TileData,
+  TileVisibility,
   TurnResult,
 } from '../types/dungeon'
 
@@ -45,6 +46,101 @@ export function oppositeDirection(dir: Direction): Direction {
 /** Manhattan distance between two positions */
 export function distance(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
+// ---- Fog of war ----
+
+/** Vision radius for player sight (Manhattan distance) */
+export const VISION_RADIUS = 3
+
+/** Convert a position to a string key for fog of war sets */
+export function positionKey(pos: Position): string {
+  return `${pos.x},${pos.y}`
+}
+
+/**
+ * Compute the set of tiles visible from a position.
+ * BFS flood-fill within Manhattan radius, stops at walls but includes wall faces.
+ * Directional walls block both movement and line-of-sight.
+ */
+export function computeVisibleTiles(
+  playerPos: Position,
+  floor: FloorData,
+  radius: number = VISION_RADIUS,
+): Set<string> {
+  const visible = new Set<string>()
+  const queue: Position[] = [playerPos]
+  const visited = new Set<string>()
+
+  visible.add(positionKey(playerPos))
+  visited.add(positionKey(playerPos))
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    const dirs: Direction[] = ['north', 'south', 'east', 'west']
+
+    for (const dir of dirs) {
+      // Check directional walls first — they block line of sight entirely
+      if (isWallBlocked(floor, current, dir)) continue
+
+      const neighbor = movePosition(current, dir)
+      const key = positionKey(neighbor)
+
+      if (visited.has(key)) continue
+      if (distance(playerPos, neighbor) > radius) continue
+
+      // Out of bounds — skip entirely
+      const tile = getTile(floor, neighbor)
+      if (!tile) continue
+
+      // Check entry wall on the neighbor side
+      if (isWallBlocked(floor, neighbor, oppositeDirection(dir))) continue
+
+      visited.add(key)
+      visible.add(key)
+
+      // Walls are visible (you see the wall face) but don't propagate through
+      if (tile.type === 'wall') continue
+
+      queue.push(neighbor)
+    }
+  }
+
+  return visible
+}
+
+/**
+ * Merge new visible tiles into the explored set.
+ * Returns the same reference if nothing changed.
+ */
+export function updateExploredTiles(
+  current: readonly string[],
+  newVisible: Set<string>,
+): readonly string[] {
+  const currentSet = new Set(current)
+  const toAdd: string[] = []
+
+  for (const key of newVisible) {
+    if (!currentSet.has(key)) {
+      toAdd.push(key)
+    }
+  }
+
+  if (toAdd.length === 0) return current
+  return [...current, ...toAdd]
+}
+
+/** Determine the visibility of a tile given the current visible and explored sets */
+export function getTileVisibility(
+  x: number,
+  y: number,
+  visibleSet: Set<string>,
+  exploredSet: Set<string>,
+): TileVisibility {
+  const key = `${x},${y}`
+  if (visibleSet.has(key)) return 'visible'
+  if (exploredSet.has(key)) return 'explored'
+  return 'hidden'
 }
 
 // ---- Floor queries ----
@@ -309,13 +405,21 @@ export function processTurn(
     events.push({ type: 'random-encounter' })
   }
 
-  return { state: afterGauge, events }
+  // 6. Update fog of war
+  const newVisible = computeVisibleTiles(afterGauge.playerPosition, floor)
+  const newExplored = updateExploredTiles(afterGauge.exploredTiles, newVisible)
+  const finalState: DungeonState = newExplored === afterGauge.exploredTiles
+    ? afterGauge
+    : { ...afterGauge, exploredTiles: newExplored }
+
+  return { state: finalState, events }
 }
 
 // ---- Initialization ----
 
 /** Create initial DungeonState from a FloorData definition */
 export function initializeDungeonState(floor: FloorData): DungeonState {
+  const initialVisible = computeVisibleTiles(floor.playerStart, floor)
   return {
     floorId: floor.id,
     floorNumber: floor.floorNumber,
@@ -332,5 +436,6 @@ export function initializeDungeonState(floor: FloorData): DungeonState {
     encounterGauge: resetEncounterGauge(),
     facing: 'north',
     processing: false,
+    exploredTiles: [...initialVisible],
   }
 }
