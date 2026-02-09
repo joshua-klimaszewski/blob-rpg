@@ -13,12 +13,14 @@ import { LoadGameScreen } from './components/ui/LoadGameScreen'
 import { SaveGameScreen } from './components/town/SaveGameScreen'
 import { HowToPlayScreen } from './components/help/HowToPlayScreen'
 import { InventoryScreen } from './components/town/InventoryScreen'
+import { DungeonSelectScreen } from './components/dungeon/DungeonSelectScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
 
 const screens = {
   title: TitleScreen,
   town: TownScreen,
   dungeon: DungeonScreen,
+  'dungeon-select': DungeonSelectScreen,
   combat: CombatScreen,
   character: CharacterSheet,
   'party-formation': PartyFormation,

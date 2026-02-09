@@ -12,6 +12,7 @@ import { useQuestStore } from './questStore';
 import { useGameStore } from './gameStore';
 import { useDungeonStore } from './dungeonStore';
 import { useGuildStore } from './guildStore';
+import { useDungeonProgressStore } from './dungeonProgressStore';
 import { getFloor } from '../data/dungeons';
 import { getQuest } from '../data/quests';
 
@@ -46,6 +47,10 @@ export function loadGameState(save: SaveData): void {
   useQuestStore.setState({
     activeQuests: save.quests?.activeQuests ?? [],
     floorsReached,
+  });
+
+  useDungeonProgressStore.setState({
+    dungeonProgress: save.dungeonProgress ?? { floors: {} },
   });
 
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
@@ -87,6 +92,10 @@ export function loadSuspendState(save: SuspendSaveData): void {
     floorsReached,
   });
 
+  useDungeonProgressStore.setState({
+    dungeonProgress: save.dungeonProgress ?? { floors: {} },
+  });
+
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
 
   // Restore dungeon state
@@ -119,12 +128,14 @@ export function collectGameState(): Omit<SaveData, 'version' | 'guildId' | 'slot
   const { roster, activePartyIds } = usePartyStore.getState();
   const { gold, materials, soldMaterials, consumables, ownedEquipment } = useInventoryStore.getState();
   const { activeQuests, floorsReached } = useQuestStore.getState();
+  const { dungeonProgress } = useDungeonProgressStore.getState();
 
   return {
     guildName: currentGuildName ?? '',
     party: { roster, activePartyIds },
     inventory: { gold, materials, soldMaterials, consumables, ownedEquipment },
     quests: { activeQuests, floorsReached },
+    dungeonProgress,
   };
 }
 
@@ -137,8 +148,11 @@ export function collectSuspendState(): Omit<SuspendSaveData, 'version' | 'guildI
     throw new Error('Cannot create suspend save: no dungeon state');
   }
 
+  const { dungeonProgress } = useDungeonProgressStore.getState();
+
   return {
     ...gameState,
+    dungeonProgress,
     dungeon: {
       floorId: dungeon.floorId,
       floorNumber: dungeon.floorNumber,
@@ -157,5 +171,6 @@ export function resetAllStores(): void {
   useInventoryStore.getState().reset();
   useQuestStore.getState().reset();
   useDungeonStore.setState({ dungeon: null, floor: null, lastEvents: [] });
+  useDungeonProgressStore.getState().reset();
   useGuildStore.getState().clearActiveGuild();
 }

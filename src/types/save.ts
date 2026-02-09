@@ -45,6 +45,21 @@ export interface SlotMeta {
 }
 
 // ============================================================================
+// Dungeon progression — persistent across runs
+// ============================================================================
+
+export interface FloorProgress {
+  floorId: string;
+  exploredTiles: string[];          // "x,y" keys persisted across runs
+  discoveredWarpPoints: string[];   // "x,y" keys of discovered warp tiles
+  unlocked: boolean;                // whether player has reached this floor
+}
+
+export interface DungeonProgress {
+  floors: Record<string, FloorProgress>;
+}
+
+// ============================================================================
 // Save data — full game snapshot stored in a slot
 // ============================================================================
 
@@ -69,6 +84,7 @@ export interface SaveData {
     activeQuests: ActiveQuest[];
     floorsReached?: string[]; // Optional for backward compatibility
   };
+  dungeonProgress?: DungeonProgress;
 }
 
 // ============================================================================
@@ -92,6 +108,7 @@ export interface SuspendSaveData {
     facing: Direction;
     exploredTiles: string[];
   };
+  dungeonProgress?: DungeonProgress;
 }
 
 // ============================================================================
@@ -100,4 +117,4 @@ export interface SuspendSaveData {
 
 export const MAX_GUILDS = 3;
 export const MAX_SLOTS_PER_GUILD = 3;
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
