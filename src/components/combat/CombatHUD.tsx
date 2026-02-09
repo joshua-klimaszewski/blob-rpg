@@ -1,4 +1,5 @@
 import type { CombatState } from '../../types/combat';
+import { HelpButton } from '../help/HelpButton';
 
 interface CombatHUDProps {
   combat: CombatState;
@@ -13,9 +14,12 @@ export function CombatHUD({ combat }: CombatHUDProps) {
           Combo x{combat.comboCounter}
         </span>
       )}
-      <span className="text-gray-500">
-        {combat.canFlee ? 'Can flee' : 'No escape'}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="text-gray-500">
+          {combat.canFlee ? 'Can flee' : 'No escape'}
+        </span>
+        <HelpButton />
+      </div>
     </div>
   );
 }

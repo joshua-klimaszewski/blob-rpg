@@ -1,0 +1,28 @@
+import type { GlossaryEntry } from './types'
+
+export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
+  { term: 'AGI', definition: 'Agility. Determines turn order and evasion chance.' },
+  { term: 'Ailment', definition: 'A negative status effect: poison, paralyze, sleep, or blind. Separate from binds.' },
+  { term: 'AOE', definition: 'Area of effect. Skills that hit multiple targets or an entire tile and its neighbors.' },
+  { term: 'Bind', definition: 'A debuff that disables a body part (head, arm, or leg) for several turns.' },
+  { term: 'Checkpoint', definition: 'A dungeon location where you can warp back to town and save progress.' },
+  { term: 'Combo Multiplier', definition: 'Consecutive hits in one turn increase damage by +10% per hit.' },
+  { term: 'Defend', definition: 'A combat action that reduces incoming damage until your next turn.' },
+  { term: 'Displacement', definition: 'Moving an enemy to a different tile on the 3x3 grid via push, pull, left, or right.' },
+  { term: 'Encounter Gauge', definition: 'A bar that fills as you walk in the dungeon. At 100%, a random battle starts.' },
+  { term: 'FOE', definition: 'Field On Enemy. A powerful visible enemy on the dungeon map that moves when you move.' },
+  { term: 'Fog of War', definition: 'Unexplored dungeon tiles are hidden. Tiles become visible within your vision radius.' },
+  { term: 'Hazard Tile', definition: 'A trap placed on a grid tile (spike, web, or fire) that triggers when an enemy occupies it.' },
+  { term: 'HP', definition: 'Hit Points. When reduced to 0, a character is knocked out.' },
+  { term: 'INT', definition: 'Intelligence. Determines magic damage and spell power.' },
+  { term: 'LUC', definition: 'Luck. Affects critical hit chance and resistance to status effects.' },
+  { term: 'Minimap', definition: 'A small overlay showing explored areas of the current dungeon floor.' },
+  { term: 'Push / Pull', definition: 'Displacement directions. Push moves enemies away; pull moves them toward you.' },
+  { term: 'Shortcut', definition: 'A one-way path in the dungeon that opens a faster route through explored areas.' },
+  { term: 'STR', definition: 'Strength. Determines physical attack damage.' },
+  { term: 'TP', definition: 'Technique Points. Spent to use skills. Restored by resting at the inn.' },
+  { term: 'Turn Order', definition: 'The sequence in which characters act each round, determined by AGI.' },
+  { term: 'VIT', definition: 'Vitality. Determines physical defense and max HP.' },
+  { term: 'WIS', definition: 'Wisdom. Determines magic defense and max TP.' },
+  { term: 'XP', definition: 'Experience points. Earned from combat. Accumulate to level up.' },
+]
