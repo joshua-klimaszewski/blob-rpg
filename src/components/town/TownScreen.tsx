@@ -13,6 +13,7 @@ export function TownScreen() {
   const gold = useInventoryStore((s) => s.gold)
   const activeQuests = useQuestStore((s) => s.activeQuests)
   const guildName = useGuildStore((s) => s.currentGuildName)
+  const guildId = useGuildStore((s) => s.currentGuildId)
 
   // Auto-initialize roster on first visit
   useEffect(() => {
@@ -30,10 +31,22 @@ export function TownScreen() {
 
   return (
     <div className="flex flex-col items-center gap-4 p-6">
-      <h1 className="text-2xl font-bold border-b-2 border-ink pb-2">Town</h1>
-      {guildName && (
-        <div className="text-xs text-gray-500">Guild: {guildName}</div>
-      )}
+      <div className="flex justify-between items-center w-full max-w-half">
+        <div>
+          <h1 className="text-2xl font-bold">Town</h1>
+          {guildName && (
+            <div className="text-xs text-gray-500">Guild: {guildName}</div>
+          )}
+        </div>
+        {guildId && (
+          <button
+            onClick={() => setScreen('save-game')}
+            className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+          >
+            Save
+          </button>
+        )}
+      </div>
 
       {/* Status bar */}
       <div className="w-full max-w-half flex justify-between text-sm">
