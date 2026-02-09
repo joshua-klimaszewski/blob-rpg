@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Direction, DungeonEvent, DungeonState, FloorData, Position } from '../types/dungeon';
 import type { SuspendSaveData } from '../types/save';
-import { initializeDungeonState, processTurn, positionKey, getTile } from '../systems/dungeon';
+import { initializeDungeonState, processTurn, positionKey, getTile, countWalkableTiles } from '../systems/dungeon';
 import { getFloor } from '../data/dungeons';
 import { useGameStore } from './gameStore';
 import { useCombatStore } from './combatStore';
@@ -75,6 +75,11 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
 
     const result = processTurn(dungeon, floor, dir);
     set({ dungeon: result.state, lastEvents: result.events });
+
+    // Update map-floor quest progress
+    const totalWalkable = countWalkableTiles(floor);
+    const exploredCount = result.state.exploredTiles.length;
+    useQuestStore.getState().updateMapFloorProgress(floor.id, exploredCount, totalWalkable);
 
     // Handle events that trigger combat or transitions
     for (const event of result.events) {

@@ -29,6 +29,13 @@ export const QUESTS: QuestDefinition[] = [
     reward: { gold: 30, xp: 50 },
   },
   {
+    id: 'quest-map-f1',
+    name: 'Master Cartographer I',
+    description: 'Fully map Floor 1 by revealing every walkable tile.',
+    objective: { type: 'map-floor', floorId: 'verdant-depths-f1' },
+    reward: { gold: 100, xp: 200 },
+  },
+  {
     id: 'quest-slay-slimes-2',
     name: 'Slime Scourge',
     description: 'Defeat 15 slimes total. Reward: Slime King\'s Crown.',
@@ -68,6 +75,14 @@ export const QUESTS: QuestDefinition[] = [
     reward: { gold: 50, xp: 100 },
     requiredFloor: 'verdant-depths-f2',
   },
+  {
+    id: 'quest-map-f2',
+    name: 'Master Cartographer II',
+    description: 'Fully map Floor 2 by revealing every walkable tile.',
+    objective: { type: 'map-floor', floorId: 'verdant-depths-f2' },
+    reward: { gold: 150, xp: 300 },
+    requiredFloor: 'verdant-depths-f2',
+  },
 
   // Floor 3 quests
   {
@@ -84,6 +99,14 @@ export const QUESTS: QuestDefinition[] = [
     description: 'Reach the Crystal Depths, Floor 3. Reward: Explorer\'s Lantern.',
     objective: { type: 'explore', floorId: 'verdant-depths-f3' },
     reward: { gold: 100, xp: 200, equipmentId: 'explorers-lantern' },
+    requiredFloor: 'verdant-depths-f3',
+  },
+  {
+    id: 'quest-map-f3',
+    name: 'Master Cartographer III',
+    description: 'Fully map Floor 3 by revealing every walkable tile.',
+    objective: { type: 'map-floor', floorId: 'verdant-depths-f3' },
+    reward: { gold: 200, xp: 400 },
     requiredFloor: 'verdant-depths-f3',
   },
 

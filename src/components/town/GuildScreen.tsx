@@ -5,6 +5,8 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { usePartyStore } from '../../stores/partyStore';
 import { QUESTS, getQuest } from '../../data/quests/index';
 import { getEquipment } from '../../data/items/index';
+import { getFloor } from '../../data/dungeons';
+import { countWalkableTiles } from '../../systems/dungeon';
 
 interface ClaimedRewardInfo {
   gold: number;
@@ -85,7 +87,15 @@ export function GuildScreen() {
               const def = getQuest(quest.definitionId);
               if (!def) return null;
 
-              const target = def.objective.type === 'explore' ? 1 : def.objective.count;
+              let target = 1;
+              if (def.objective.type === 'explore') {
+                target = 1;
+              } else if (def.objective.type === 'map-floor') {
+                const floor = getFloor(def.objective.floorId);
+                target = floor ? countWalkableTiles(floor) : 1;
+              } else {
+                target = def.objective.count;
+              }
 
               return (
                 <div
