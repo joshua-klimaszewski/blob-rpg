@@ -23,6 +23,8 @@ import {
 } from '../systems/combat';
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
+import { useInventoryStore } from './inventoryStore';
+import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
 import type { SkillDefinition } from '../types/character';
@@ -71,12 +73,19 @@ interface CombatStore {
 
 function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
   if (state.phase === 'victory') {
-    const rewards = calculateRewards(state);
+    const rewards = calculateRewards(state, defaultRNG, getEnemy);
     useCombatStore.setState({ rewards });
 
     // Award XP and sync HP/TP to party store
     usePartyStore.getState().awardXp(rewards.xp);
     usePartyStore.getState().syncHpTpFromCombat(state.party);
+
+    // Award gold and materials to inventory
+    const inventory = useInventoryStore.getState();
+    inventory.addGold(rewards.gold);
+    for (const mat of rewards.materials) {
+      inventory.addMaterial(mat.id, mat.quantity);
+    }
 
     setTimeout(() => {
       get().endCombat();
