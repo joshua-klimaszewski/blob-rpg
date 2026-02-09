@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { useDungeonStore } from '../../stores/dungeonStore'
 import { DungeonViewport } from './DungeonViewport'
 import { DungeonHUD } from './DungeonHUD'
@@ -17,18 +17,14 @@ export function DungeonScreen() {
   const lastEvents = useDungeonStore((s) => s.lastEvents)
   const clearEvents = useDungeonStore((s) => s.clearEvents)
 
-  const [showNavigationPrompt, setShowNavigationPrompt] = useState<'entrance' | 'exit' | null>(null)
-
-  // Detect navigation events and show prompts
-  useEffect(() => {
+  // Derive which navigation prompt to show from events (no useState needed)
+  const showNavigationPrompt = useMemo(() => {
     const hasEntranceEvent = lastEvents.some((e) => e.type === 'reached-entrance')
     const hasExitEvent = lastEvents.some((e) => e.type === 'reached-exit')
 
-    if (hasEntranceEvent) {
-      setShowNavigationPrompt('entrance')
-    } else if (hasExitEvent) {
-      setShowNavigationPrompt('exit')
-    }
+    if (hasEntranceEvent) return 'entrance'
+    if (hasExitEvent) return 'exit'
+    return null
   }, [lastEvents])
 
   // Wrap move to prevent input when prompt is showing
@@ -42,20 +38,17 @@ export function DungeonScreen() {
 
   const handleNextFloor = () => {
     if (!floor?.nextFloorId) return
-    setShowNavigationPrompt(null)
-    clearEvents()
+    clearEvents() // Clearing events will hide the prompt
     enterDungeon(floor.nextFloorId)
   }
 
   const handleReturnToTown = () => {
-    setShowNavigationPrompt(null)
-    clearEvents()
+    clearEvents() // Clearing events will hide the prompt
     warpToTown()
   }
 
   const handleCancelNavigation = () => {
-    setShowNavigationPrompt(null)
-    clearEvents()
+    clearEvents() // Clearing events will hide the prompt
   }
 
   if (!dungeon || !floor) {
