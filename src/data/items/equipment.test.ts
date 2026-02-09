@@ -7,8 +7,8 @@ import { EQUIPMENT, getEquipment, getAllEquipment } from './index';
 import { usePartyStore } from '../../stores/partyStore';
 
 describe('Equipment Registry', () => {
-  it('has 8 equipment items', () => {
-    expect(getAllEquipment()).toHaveLength(8);
+  it('has 16 equipment items', () => {
+    expect(getAllEquipment()).toHaveLength(16);
   });
 
   it('all IDs are unique', () => {
