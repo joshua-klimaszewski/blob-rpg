@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { hasAnyGuilds, hasLegacySaveData, migrateLegacySaves } from '../../systems/save';
 import { MAX_GUILDS } from '../../types/save';
@@ -6,15 +6,15 @@ import { getRegistry } from '../../systems/save';
 
 export function TitleScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
-  const [migrated, setMigrated] = useState(false);
 
-  // Auto-migrate legacy saves on mount
-  useEffect(() => {
+  // Auto-migrate legacy saves once (synchronous localStorage work, safe in initializer)
+  const [migrated] = useState(() => {
     if (hasLegacySaveData()) {
       migrateLegacySaves();
-      setMigrated(true);
+      return true;
     }
-  }, []);
+    return false;
+  });
 
   const guildsExist = hasAnyGuilds();
   const registry = getRegistry();
