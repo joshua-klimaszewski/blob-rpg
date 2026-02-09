@@ -45,7 +45,7 @@ export function SaveGameScreen() {
     setLastLoadedSlot(meta.slotId);
     setConfirmOverwrite(false);
     setSaved(true);
-    setTimeout(() => setScreen('inn'), 1200);
+    setTimeout(() => setScreen('town'), 1200);
   };
 
   const handleDeleteSlot = (slotId: string) => {
@@ -86,7 +86,7 @@ export function SaveGameScreen() {
       <div className="flex justify-between items-center w-full max-w-half pt-6 px-6 pb-2">
         <h1 className="text-2xl font-bold">Save Game</h1>
         <button
-          onClick={() => setScreen('inn')}
+          onClick={() => setScreen('town')}
           className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
         >
           Back
