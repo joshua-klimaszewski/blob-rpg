@@ -62,6 +62,8 @@ export type QuestObjective =
 export interface QuestReward {
   gold: number;
   xp: number;
+  /** Optional equipment reward (quest-exclusive) */
+  equipmentId?: string;
 }
 
 /** A quest available at the guild */
@@ -71,6 +73,8 @@ export interface QuestDefinition {
   description: string;
   objective: QuestObjective;
   reward: QuestReward;
+  /** Floor required to unlock this quest (if any) */
+  requiredFloor?: string;
 }
 
 /** Active quest with progress tracking */

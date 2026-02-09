@@ -13,6 +13,7 @@ import { useGameStore } from './gameStore';
 import { useDungeonStore } from './dungeonStore';
 import { useGuildStore } from './guildStore';
 import { getFloor } from '../data/dungeons';
+import { getQuest } from '../data/quests';
 
 /** Hydrate all stores from a regular save (loads into town) */
 export function loadGameState(save: SaveData): void {
@@ -29,8 +30,22 @@ export function loadGameState(save: SaveData): void {
     ownedEquipment: save.inventory.ownedEquipment,
   });
 
+  // Load floorsReached, backfilling from completed explore quests if missing
+  let floorsReached = save.quests?.floorsReached ?? [];
+  if (floorsReached.length === 0 && save.quests?.activeQuests) {
+    // Backfill from completed explore quests
+    const completedFloors = save.quests.activeQuests
+      .filter((q) => q.completed)
+      .map((q) => getQuest(q.definitionId))
+      .filter((def) => def && def.objective.type === 'explore')
+      .map((def) => def!.objective.type === 'explore' ? def!.objective.floorId : null)
+      .filter((id): id is string => id !== null);
+    floorsReached = [...new Set(completedFloors)];
+  }
+
   useQuestStore.setState({
     activeQuests: save.quests?.activeQuests ?? [],
+    floorsReached,
   });
 
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
@@ -54,8 +69,22 @@ export function loadSuspendState(save: SuspendSaveData): void {
     ownedEquipment: save.inventory.ownedEquipment,
   });
 
+  // Load floorsReached, backfilling from completed explore quests if missing
+  let floorsReached = save.quests?.floorsReached ?? [];
+  if (floorsReached.length === 0 && save.quests?.activeQuests) {
+    // Backfill from completed explore quests
+    const completedFloors = save.quests.activeQuests
+      .filter((q) => q.completed)
+      .map((q) => getQuest(q.definitionId))
+      .filter((def) => def && def.objective.type === 'explore')
+      .map((def) => def!.objective.type === 'explore' ? def!.objective.floorId : null)
+      .filter((id): id is string => id !== null);
+    floorsReached = [...new Set(completedFloors)];
+  }
+
   useQuestStore.setState({
     activeQuests: save.quests?.activeQuests ?? [],
+    floorsReached,
   });
 
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
@@ -89,13 +118,13 @@ export function collectGameState(): Omit<SaveData, 'version' | 'guildId' | 'slot
   const { currentGuildName } = useGuildStore.getState();
   const { roster, activePartyIds } = usePartyStore.getState();
   const { gold, materials, soldMaterials, consumables, ownedEquipment } = useInventoryStore.getState();
-  const { activeQuests } = useQuestStore.getState();
+  const { activeQuests, floorsReached } = useQuestStore.getState();
 
   return {
     guildName: currentGuildName ?? '',
     party: { roster, activePartyIds },
     inventory: { gold, materials, soldMaterials, consumables, ownedEquipment },
-    quests: { activeQuests },
+    quests: { activeQuests, floorsReached },
   };
 }
 

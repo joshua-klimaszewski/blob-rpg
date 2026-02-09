@@ -82,7 +82,17 @@ export function SaveGameScreen() {
 
   return (
     <div className="flex flex-col items-center h-dvh">
-      <h1 className="text-2xl font-bold border-b-2 border-ink pb-2 pt-6 px-6">Save Game</h1>
+      {/* Header with back button */}
+      <div className="flex justify-between items-center w-full max-w-xs pt-6 px-6 pb-2">
+        <h1 className="text-2xl font-bold">Save Game</h1>
+        <button
+          onClick={() => setScreen('inn')}
+          className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+        >
+          Back
+        </button>
+      </div>
+      <div className="w-full border-b-2 border-ink" />
 
       <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
         <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -138,13 +148,6 @@ export function SaveGameScreen() {
           `}
         >
           Save
-        </button>
-
-        <button
-          onClick={() => setScreen('inn')}
-          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          Back
         </button>
       </div>
 
