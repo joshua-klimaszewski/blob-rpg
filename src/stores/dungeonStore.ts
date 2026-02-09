@@ -4,6 +4,7 @@ import { initializeDungeonState, processTurn } from '../systems/dungeon';
 import { getFloor } from '../data/dungeons';
 import { useGameStore } from './gameStore';
 import { useCombatStore } from './combatStore';
+import { useQuestStore } from './questStore';
 import { createRandomEncounter, createFOEEncounter } from '../data/encounters';
 
 interface DungeonStore {
@@ -30,6 +31,7 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
     const dungeon = initializeDungeonState(floor)
     set({ dungeon, floor, lastEvents: [] })
     useGameStore.getState().setScreen('dungeon')
+    useQuestStore.getState().completeExploreQuest(floorId)
   },
 
   move: (dir: Direction) => {
