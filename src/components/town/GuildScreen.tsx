@@ -30,7 +30,7 @@ export function GuildScreen() {
     const reward = claimQuest(definitionId);
     if (reward) {
       addGold(reward.gold);
-      awardXp(reward.xp);
+      awardXp(reward.xp, true); // Award to all party members (not just active)
       if (reward.equipmentId) {
         addEquipment(reward.equipmentId, 0);
       }
