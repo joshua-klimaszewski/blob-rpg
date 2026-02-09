@@ -40,8 +40,6 @@ export function CombatScreen() {
   const currentEntry = combat?.turnOrder[combat.currentActorIndex];
   const currentActor = combat && currentEntry ? findEntity(combat, currentEntry.entityId) : null;
   const isPlayerTurn = currentActor?.isParty === true && isAlive(currentActor);
-  const isEnemyTurn =
-    currentActor?.isParty === false && isAlive(currentActor) && combat?.phase === 'active';
 
   // Resolve actor's usable skills (non-passive)
   const actorSkills: SkillDefinition[] =
@@ -57,8 +55,13 @@ export function CombatScreen() {
   useEffect(() => {
     if (combatPhase !== 'active' || processingRef.current) return;
 
+    // Recompute current actor inside effect to avoid re-running on every state change
+    const currentEntry = combat?.turnOrder[combat.currentActorIndex];
+    const actor = combat && currentEntry ? findEntity(combat, currentEntry.entityId) : null;
+    const isEnemyActing = actor?.isParty === false && isAlive(actor);
+
     // Skip dead actors
-    if (currentActor && !isAlive(currentActor)) {
+    if (actor && !isAlive(actor)) {
       const timer = setTimeout(() => {
         advanceToNext();
       }, 100);
@@ -66,7 +69,7 @@ export function CombatScreen() {
     }
 
     // Auto-execute enemy turns
-    if (isEnemyTurn) {
+    if (isEnemyActing) {
       processingRef.current = true;
       let advanceTimer: ReturnType<typeof setTimeout>;
       const timer = setTimeout(() => {
@@ -79,10 +82,9 @@ export function CombatScreen() {
       return () => {
         clearTimeout(timer);
         clearTimeout(advanceTimer);
-        processingRef.current = false;
       };
     }
-  }, [combatActorIndex, combatPhase, currentActor, isEnemyTurn, processEnemyTurn, advanceToNext]);
+  }, [combatActorIndex, combatPhase, combat, processEnemyTurn, advanceToNext]);
 
   // Reset UI state when turn changes
   const currentActorIndex = combat?.currentActorIndex;
