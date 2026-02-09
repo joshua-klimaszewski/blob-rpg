@@ -43,8 +43,10 @@ export function CombatScreen() {
       : [];
 
   // Auto-process enemy turns and skip dead actors
+  const combatPhase = combat?.phase;
+  const combatActorIndex = combat?.currentActorIndex;
   useEffect(() => {
-    if (!combat || combat.phase !== 'active' || processingRef.current) return;
+    if (combatPhase !== 'active' || processingRef.current) return;
 
     // Skip dead actors
     if (currentActor && !isAlive(currentActor)) {
@@ -69,16 +71,19 @@ export function CombatScreen() {
         processingRef.current = false;
       };
     }
-  }, [combat?.currentActorIndex, combat?.phase, currentActor, isEnemyTurn, processEnemyTurn, advanceToNext]);
+  }, [combatActorIndex, combatPhase, currentActor, isEnemyTurn, processEnemyTurn, advanceToNext]);
 
   // Reset UI state when turn changes
-  useEffect(() => {
-    setSelectedAction(null);
-    setSelectedTile(null);
-    setShowSkillList(false);
-    setPendingSkill(null);
-    setAllySelectMode(false);
-  }, [combat?.currentActorIndex]);
+  const currentActorIndex = combat?.currentActorIndex;
+  const prevActorIndexRef = useRef(currentActorIndex);
+  if (prevActorIndexRef.current !== currentActorIndex) {
+    prevActorIndexRef.current = currentActorIndex;
+    if (selectedAction !== null) setSelectedAction(null);
+    if (selectedTile !== null) setSelectedTile(null);
+    if (showSkillList) setShowSkillList(false);
+    if (pendingSkill !== null) setPendingSkill(null);
+    if (allySelectMode) setAllySelectMode(false);
+  }
 
   const handleAttackButton = useCallback(() => {
     if (selectedAction === 'attack' && selectedTile && currentActor) {

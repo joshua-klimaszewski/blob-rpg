@@ -6,7 +6,7 @@ import { xpForLevel } from '../../systems/character';
 import { StatBlock } from './StatBlock';
 import { EquipmentSlots } from './EquipmentSlots';
 import { SkillTree } from './SkillTree';
-import type { EquipmentSlot } from '../../types/character';
+
 
 export function CharacterSheet() {
   const roster = usePartyStore((s) => s.roster);
@@ -99,9 +99,8 @@ export function CharacterSheet() {
           <div className="text-sm font-bold mb-1">Equipment</div>
           <EquipmentSlots
             equipment={member.equipment}
-            onSlotTap={(_slot: EquipmentSlot) => {
+            onSlotTap={() => {
               // MVP: equipment changing not implemented yet (needs inventory UI)
-              // Future: open equipment selection modal
             }}
           />
         </div>
