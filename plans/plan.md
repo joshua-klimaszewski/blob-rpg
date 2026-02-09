@@ -130,7 +130,8 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [x] Enemy AI improvements: aggressive/defensive/random patterns (2026-02-08)
 - [x] 10 quests across F1-F3 (kill, gather, explore) (2026-02-08)
 - [x] Floor transitions: exit → next floor or return to town (2026-02-08)
-- [ ] Tutorial / new game flow
+- [x] How to Play / Glossary screen — 5-tab reference guide (Controls, Dungeon, Combat, Classes, Glossary) accessible from Town + "?" overlay from Dungeon/Combat HUDs (2026-02-08)
+- [ ] Tutorial / new game flow (guided first-run experience — separate from How to Play reference)
 - [ ] Accessibility pass (keyboard nav, screen reader labels, touch targets)
 - [ ] Performance (memoization, lazy loading)
 
@@ -910,6 +911,53 @@ These systems were researched but intentionally excluded from MVP scope:
 **Screenshots:** 23 screenshots saved to `~/Desktop/blob-rpg-screenshots/qa-session/`
 
 **PR:** qa/full-qa-session (branch from main)
+
+### Sprint 11 — How to Play / Glossary (2026-02-08)
+
+**Goal:** Add a tabbed reference guide for new players covering all implemented game systems.
+
+**Tasks:**
+- [x] Add `'how-to-play'` to `GameScreen` type (2026-02-08)
+- [x] Add `helpOpen` boolean + `toggleHelp` action to `gameStore` (2026-02-08)
+- [x] Create help content data files in `src/data/help/` (controls, dungeon, combat, glossary) (2026-02-08)
+- [x] Create `HelpSection` reusable renderer component (2026-02-08)
+- [x] Create `HowToPlayContent` with 5 horizontal tabs: Controls, Dungeon, Combat, Classes, Glossary (2026-02-08)
+- [x] Classes tab dynamically pulls from `getAllClasses()` + `getClassSkills()` registry (2026-02-08)
+- [x] Glossary tab with 24 alphabetical game term definitions (2026-02-08)
+- [x] Create `HowToPlayScreen` full-screen wrapper (Town entry point) (2026-02-08)
+- [x] Create `HelpOverlay` absolute overlay wrapper (Dungeon/Combat entry point) (2026-02-08)
+- [x] Create `HelpButton` ("?") component for HUD integration (2026-02-08)
+- [x] Add "How to Play" button to TownScreen (2026-02-08)
+- [x] Add `HelpButton` to DungeonHUD (next to Town button) (2026-02-08)
+- [x] Add `HelpButton` to CombatHUD (right end) (2026-02-08)
+- [x] Register `HowToPlayScreen` in App.tsx screens map (2026-02-08)
+- [x] Render `HelpOverlay` conditionally in App.tsx when `helpOpen === true` (2026-02-08)
+
+**Test Coverage:**
+- 341 tests still passing (no regressions)
+- Build verified clean (`tsc -b && vite build`)
+
+**Files Created (10):**
+- `src/data/help/types.ts` — `HelpEntry` and `GlossaryEntry` interfaces
+- `src/data/help/controls.ts` — 3 sections (movement, combat controls, minimap)
+- `src/data/help/dungeon.ts` — 4 sections (encounter gauge, FOEs, fog, checkpoints)
+- `src/data/help/combat.ts` — 8 sections (turn order, grid, actions, displacement, combos, traps, binds, ailments)
+- `src/data/help/glossary.ts` — 24 alphabetical terms (AGI through XP)
+- `src/components/help/HelpSection.tsx` — Reusable section renderer
+- `src/components/help/HelpButton.tsx` — "?" icon button wired to `toggleHelp`
+- `src/components/help/HowToPlayContent.tsx` — 5-tab content component
+- `src/components/help/HowToPlayScreen.tsx` — Full screen wrapper (Town entry)
+- `src/components/help/HelpOverlay.tsx` — Overlay wrapper (Dungeon/Combat entry)
+
+**Files Modified (6):**
+- `src/types/game.ts` — Added `'how-to-play'` to `GameScreen`
+- `src/stores/gameStore.ts` — Added `helpOpen` + `toggleHelp`
+- `src/App.tsx` — Registered `HowToPlayScreen`, renders `HelpOverlay` conditionally
+- `src/components/town/TownScreen.tsx` — Added "How to Play" button
+- `src/components/dungeon/DungeonHUD.tsx` — Added `HelpButton` next to Town button
+- `src/components/combat/CombatHUD.tsx` — Added `HelpButton` at right end
+
+**PR:** #12 — feat/help-screen (branch from main)
 
 ---
 

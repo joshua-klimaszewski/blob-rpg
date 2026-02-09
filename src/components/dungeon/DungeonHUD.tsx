@@ -1,4 +1,5 @@
 import { useInventoryStore } from '../../stores/inventoryStore'
+import { HelpButton } from '../help/HelpButton'
 
 interface DungeonHUDProps {
   floorNumber: number
@@ -14,12 +15,15 @@ export function DungeonHUD({ floorNumber, onReturnToTown }: DungeonHUDProps) {
         <span className="font-bold">F{floorNumber}</span>
         <span className="text-sm tabular-nums">{gold}G</span>
       </div>
-      <button
-        onClick={onReturnToTown}
-        className="border border-ink px-3 py-1 text-sm active:bg-ink active:text-paper"
-      >
-        Town
-      </button>
+      <div className="flex items-center gap-2">
+        <HelpButton />
+        <button
+          onClick={onReturnToTown}
+          className="border border-ink px-3 py-1 text-sm active:bg-ink active:text-paper"
+        >
+          Town
+        </button>
+      </div>
     </div>
   )
 }

@@ -108,6 +108,13 @@ export function TownScreen() {
         >
           Party
         </button>
+
+        <button
+          onClick={() => setScreen('how-to-play')}
+          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
+        >
+          How to Play
+        </button>
       </div>
     </div>
   )

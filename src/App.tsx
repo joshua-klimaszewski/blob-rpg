@@ -8,6 +8,8 @@ import { InnScreen } from './components/town/InnScreen'
 import { ShopScreen } from './components/town/ShopScreen'
 import { GuildScreen } from './components/town/GuildScreen'
 import { TitleScreen } from './components/ui/TitleScreen'
+import { HowToPlayScreen } from './components/help/HowToPlayScreen'
+import { HelpOverlay } from './components/help/HelpOverlay'
 
 const screens = {
   title: TitleScreen,
@@ -19,10 +21,12 @@ const screens = {
   inn: InnScreen,
   shop: ShopScreen,
   guild: GuildScreen,
+  'how-to-play': HowToPlayScreen,
 } as const
 
 export function App() {
   const screen = useGameStore((s) => s.screen)
+  const helpOpen = useGameStore((s) => s.helpOpen)
   const Screen = screens[screen as keyof typeof screens]
 
   if (!Screen) {
@@ -36,8 +40,9 @@ export function App() {
   }
 
   return (
-    <div className="min-h-dvh bg-paper text-ink font-mono">
+    <div className="relative min-h-dvh bg-paper text-ink font-mono">
       <Screen />
+      {helpOpen && <HelpOverlay />}
     </div>
   )
 }
