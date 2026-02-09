@@ -57,15 +57,17 @@ export function CombatScreen() {
     // Auto-execute enemy turns
     if (isEnemyTurn) {
       processingRef.current = true;
+      let advanceTimer: ReturnType<typeof setTimeout>;
       const timer = setTimeout(() => {
         processEnemyTurn();
-        setTimeout(() => {
+        advanceTimer = setTimeout(() => {
           advanceToNext();
           processingRef.current = false;
         }, 600);
       }, 500);
       return () => {
         clearTimeout(timer);
+        clearTimeout(advanceTimer);
         processingRef.current = false;
       };
     }
