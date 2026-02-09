@@ -6,10 +6,12 @@ interface ActionMenuProps {
   isPlayerTurn: boolean;
   canFlee: boolean;
   hasSkills: boolean;
+  hasItems: boolean;
   selectedAction: SelectedAction;
   selectedTile: GridPosition | null;
   onAttack: () => void;
   onSkills: () => void;
+  onItems: () => void;
   onDefend: () => void;
   onFlee: () => void;
   onCancel: () => void;
@@ -19,10 +21,12 @@ export function ActionMenu({
   isPlayerTurn,
   canFlee,
   hasSkills,
+  hasItems,
   selectedAction,
   selectedTile,
   onAttack,
   onSkills,
+  onItems,
   onDefend,
   onFlee,
   onCancel,
@@ -69,41 +73,55 @@ export function ActionMenu({
   // Default: show action choices
   return (
     <div className="px-4 py-3 border-t-2 border-ink bg-paper">
-      <div className="flex gap-2 justify-center max-w-xs mx-auto">
-        <button
-          type="button"
-          className="flex-1 min-h-touch border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
-          onClick={onAttack}
-        >
-          Attack
-        </button>
-        <button
-          type="button"
-          className={`flex-1 min-h-touch border-2 font-bold text-sm
-            ${hasSkills ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
-          `}
-          disabled={!hasSkills}
-          onClick={onSkills}
-        >
-          Skills
-        </button>
-        <button
-          type="button"
-          className="flex-1 min-h-touch border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
-          onClick={onDefend}
-        >
-          Defend
-        </button>
-        <button
-          type="button"
-          className={`flex-1 min-h-touch border-2 font-bold text-sm
-            ${canFlee ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
-          `}
-          disabled={!canFlee}
-          onClick={onFlee}
-        >
-          Flee
-        </button>
+      <div className="flex flex-col gap-2 max-w-xs mx-auto">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="flex-1 min-h-touch border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+            onClick={onAttack}
+          >
+            Attack
+          </button>
+          <button
+            type="button"
+            className={`flex-1 min-h-touch border-2 font-bold text-sm
+              ${hasSkills ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
+            `}
+            disabled={!hasSkills}
+            onClick={onSkills}
+          >
+            Skills
+          </button>
+          <button
+            type="button"
+            className={`flex-1 min-h-touch border-2 font-bold text-sm
+              ${hasItems ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
+            `}
+            disabled={!hasItems}
+            onClick={onItems}
+          >
+            Item
+          </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="flex-1 min-h-touch border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+            onClick={onDefend}
+          >
+            Defend
+          </button>
+          <button
+            type="button"
+            className={`flex-1 min-h-touch border-2 font-bold text-sm
+              ${canFlee ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
+            `}
+            disabled={!canFlee}
+            onClick={onFlee}
+          >
+            Flee
+          </button>
+        </div>
       </div>
     </div>
   );

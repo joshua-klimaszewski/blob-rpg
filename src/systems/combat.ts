@@ -43,6 +43,7 @@ import type {
 } from '../types/combat';
 
 import type { SkillDefinition, SkillEffect } from '../types/character';
+import type { ConsumableDefinition } from '../types/economy';
 
 // ============================================================================
 // Random Number Generator (Injectable for Testing)
@@ -1171,6 +1172,62 @@ export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionRe
 }
 
 /**
+ * Execute an item action (use consumable on ally)
+ */
+export function executeItemAction(
+  state: CombatState,
+  actorId: string,
+  targetId: string,
+  consumable: ConsumableDefinition,
+): ActionResult {
+  const actor = findEntity(state, actorId);
+  const target = findEntity(state, targetId);
+  if (!actor || !target) return { state, events: [] };
+
+  const events: CombatEventUnion[] = [];
+  let newState = state;
+
+  switch (consumable.effect.type) {
+    case 'heal-hp': {
+      const healAmount = Math.min(consumable.effect.amount, target.maxHp - target.hp);
+      const healed: CombatEntity = { ...target, hp: target.hp + healAmount };
+      newState = updateEntity(newState, targetId, healed);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: healAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'heal-tp': {
+      const tpAmount = Math.min(consumable.effect.amount, target.maxTp - target.tp);
+      const restored: CombatEntity = { ...target, tp: target.tp + tpAmount };
+      newState = updateEntity(newState, targetId, restored);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: tpAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'cure-ailments': {
+      const cured: CombatEntity = {
+        ...target,
+        ailments: { poison: null, paralyze: null, sleep: null, blind: null },
+      };
+      newState = updateEntity(newState, targetId, cured);
+      break;
+    }
+  }
+
+  return { state: newState, events };
+}
+
+/**
  * Execute a combat action
  * Routes to specific action handlers, checks victory/defeat, advances turn
  */
@@ -1212,9 +1269,11 @@ export function executeAction(
       break;
     }
 
-    case 'item':
-      // MVP: Not implemented yet
+    case 'item': {
+      // Item actions are handled directly by the store (which calls executeItemAction)
+      // since they need consumable lookup and inventory deduction
       return { state, events: [] };
+    }
 
     default:
       return { state, events: [] };

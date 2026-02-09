@@ -6,9 +6,12 @@ import type { SelectedAction } from './ActionMenu';
 import { SkillList } from './SkillList';
 import { CombatHUD } from './CombatHUD';
 import { TurnOrderTimeline } from './TurnOrderTimeline';
+import { ItemMenu } from './ItemMenu';
 import { useCombatEvents } from '../../hooks/useCombatEvents';
+import { useInventoryStore } from '../../stores/inventoryStore';
 import { findEntity, isAlive } from '../../systems/combat';
 import { getSkill } from '../../data/classes/index';
+import { getAllConsumables } from '../../data/items/index';
 import type { SkillDefinition } from '../../types/character';
 import type { GridPosition } from '../../types/combat';
 
@@ -25,7 +28,12 @@ export function CombatScreen() {
   const [showSkillList, setShowSkillList] = useState(false);
   const [pendingSkill, setPendingSkill] = useState<SkillDefinition | null>(null);
   const [allySelectMode, setAllySelectMode] = useState(false);
+  const [showItemMenu, setShowItemMenu] = useState(false);
   const processingRef = useRef(false);
+
+  // Check if player has any consumable items
+  const inventoryConsumables = useInventoryStore((s) => s.consumables);
+  const hasItems = getAllConsumables().some((c) => (inventoryConsumables[c.id] ?? 0) > 0);
 
   // Get current actor info
   const currentEntry = combat?.turnOrder[combat.currentActorIndex];
@@ -85,6 +93,7 @@ export function CombatScreen() {
     if (showSkillList) setShowSkillList(false);
     if (pendingSkill !== null) setPendingSkill(null);
     if (allySelectMode) setAllySelectMode(false);
+    if (showItemMenu) setShowItemMenu(false);
   }
 
   const handleAttackButton = useCallback(() => {
@@ -230,7 +239,19 @@ export function CombatScreen() {
     setPendingSkill(null);
     setAllySelectMode(false);
     setShowSkillList(false);
+    setShowItemMenu(false);
   }, []);
+
+  const handleItemsButton = useCallback(() => {
+    setShowItemMenu(true);
+    setSelectedAction(null);
+    setSelectedTile(null);
+  }, []);
+
+  const handleItemUse = useCallback(() => {
+    setShowItemMenu(false);
+    setTimeout(() => advanceToNext(), 300);
+  }, [advanceToNext]);
 
   if (!combat) {
     return (
@@ -368,16 +389,28 @@ export function CombatScreen() {
         />
       )}
 
+      {/* Item Menu Overlay */}
+      {showItemMenu && currentActor && (
+        <ItemMenu
+          actor={currentActor}
+          party={combat.party}
+          onUse={handleItemUse}
+          onCancel={handleCancel}
+        />
+      )}
+
       {/* Action Menu */}
-      {combat.phase === 'active' && !showSkillList && !allySelectMode && (
+      {combat.phase === 'active' && !showSkillList && !allySelectMode && !showItemMenu && (
         <ActionMenu
           isPlayerTurn={isPlayerTurn}
           canFlee={combat.canFlee}
           hasSkills={actorSkills.length > 0}
+          hasItems={hasItems}
           selectedAction={selectedAction}
           selectedTile={selectedTile}
           onAttack={selectedAction === 'skill-targeting' ? handleSkillConfirm : handleAttackButton}
           onSkills={handleSkillsButton}
+          onItems={handleItemsButton}
           onDefend={handleDefend}
           onFlee={handleFlee}
           onCancel={handleCancel}
