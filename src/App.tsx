@@ -7,8 +7,10 @@ import { PartyFormation } from './components/character/PartyFormation'
 import { InnScreen } from './components/town/InnScreen'
 import { ShopScreen } from './components/town/ShopScreen'
 import { GuildScreen } from './components/town/GuildScreen'
+import { TitleScreen } from './components/ui/TitleScreen'
 
 const screens = {
+  title: TitleScreen,
   town: TownScreen,
   dungeon: DungeonScreen,
   combat: CombatScreen,
