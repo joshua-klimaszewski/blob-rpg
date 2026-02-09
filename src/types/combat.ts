@@ -5,6 +5,8 @@
  * All types are JSON-serializable for future save system compatibility.
  */
 
+import type { PassiveModifier } from './character';
+
 // ============================================================================
 // Grid & Position
 // ============================================================================
@@ -170,6 +172,9 @@ export interface CombatEntity {
 
   /** Active temporary buffs */
   buffs: BuffState[];
+
+  /** Passive modifiers from learned skills (party members only) */
+  passiveModifiers: PassiveModifier[];
 }
 
 // ============================================================================

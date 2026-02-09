@@ -29,6 +29,7 @@ import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
 import type { SkillDefinition } from '../types/character';
+import { getPassiveModifiers } from '../systems/character';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
 function lookupSkill(id: string): SkillDefinition {
@@ -122,8 +123,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   startCombat: (encounter) => {
     const combat = initializeCombat(encounter);
 
+    // Inject passive modifiers from learned skills into party combat entities
+    const partyWithPassives = combat.party.map((entity) => {
+      const member = encounter.party.find((m) => m.id === entity.id);
+      if (!member) return entity;
+      const modifiers = getPassiveModifiers(member.learnedSkills, lookupSkill);
+      return { ...entity, passiveModifiers: modifiers };
+    });
+
     set({
-      combat,
+      combat: { ...combat, party: partyWithPassives },
       encounter,
       lastEvents: [],
       rewards: null,

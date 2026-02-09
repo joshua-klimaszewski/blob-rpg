@@ -103,6 +103,7 @@ describe('PartyStore', () => {
         isParty: true as const,
         skills: [] as string[],
         buffs: [],
+        passiveModifiers: [],
       }));
 
       usePartyStore.getState().syncHpTpFromCombat(combatParty);

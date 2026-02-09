@@ -53,6 +53,7 @@ function createTestEntity(overrides?: Partial<CombatEntity>): CombatEntity {
     isParty: false,
     skills: [],
     buffs: [],
+    passiveModifiers: [],
     ...overrides,
   };
 }
@@ -560,5 +561,129 @@ describe('calculateDamage with stat parameter', () => {
     const result = calculateDamage(attacker, defender, 1.0, 0, fixedRNG, 'int');
     // Without head bind, base would be 20*1 - 5 = 15, then *0.5 for head bind
     expect(result.damage).toBeLessThanOrEqual(10);
+  });
+});
+
+// ============================================================================
+// Passive Combat Modifier Tests
+// ============================================================================
+
+describe('bind-duration-bonus passive', () => {
+  function setupBindCombat() {
+    const grid = createEmptyGrid();
+    grid[1][1].entities = ['enemy-1'];
+
+    const party = createTestEntity({
+      id: 'party-1', name: 'Hexblob', isParty: true, position: null,
+      stats: { str: 5, vit: 7, int: 12, wis: 10, agi: 7, luc: 6 },
+      tp: 30,
+      passiveModifiers: [{ type: 'bind-duration-bonus', amount: 1 }],
+    });
+    const enemy = createTestEntity({
+      id: 'enemy-1', name: 'Slime', isParty: false, position: [1, 1],
+      hp: 50, maxHp: 50,
+    });
+
+    return createTestState({
+      party: [party],
+      enemies: [enemy],
+      grid,
+      turnOrder: [
+        { entityId: 'party-1', speed: 7, hasActed: false, isDefending: false },
+        { entityId: 'enemy-1', speed: 5, hasActed: false, isDefending: false },
+      ],
+    });
+  }
+
+  const lookup = (id: string): SkillDefinition => {
+    if (id === 'bind-skill') {
+      return createTestSkill({
+        id: 'bind-skill', tpCost: 5, bodyPartRequired: 'head',
+        effects: [{ type: 'bind', bindType: 'arm', chance: 100, duration: 3 }],
+      });
+    }
+    throw new Error(`Unknown skill: ${id}`);
+  };
+
+  it('adds bonus turns to bind duration', () => {
+    const state = setupBindCombat();
+    const result = executeSkillAction(state, 'party-1', 'bind-skill', [1, 1], lowRNG, lookup);
+
+    const enemy = result.state.enemies.find((e) => e.id === 'enemy-1');
+    // Base duration 3 + bonus 1 = 4 turns
+    expect(enemy!.binds.arm).toBe(4);
+  });
+
+  it('does not add bonus without the passive', () => {
+    const state = setupBindCombat();
+    // Remove passive
+    const stateNoPassive = {
+      ...state,
+      party: state.party.map((p) => ({ ...p, passiveModifiers: [] })),
+    };
+    const result = executeSkillAction(stateNoPassive, 'party-1', 'bind-skill', [1, 1], lowRNG, lookup);
+
+    const enemy = result.state.enemies.find((e) => e.id === 'enemy-1');
+    expect(enemy!.binds.arm).toBe(3); // Base duration only
+  });
+});
+
+describe('poison-damage-bonus passive', () => {
+  function setupPoisonCombat() {
+    const grid = createEmptyGrid();
+    grid[1][1].entities = ['enemy-1'];
+
+    const party = createTestEntity({
+      id: 'party-1', name: 'Toxblob', isParty: true, position: null,
+      stats: { str: 6, vit: 7, int: 12, wis: 8, agi: 9, luc: 8 },
+      tp: 30,
+      passiveModifiers: [{ type: 'poison-damage-bonus', amount: 2 }],
+    });
+    const enemy = createTestEntity({
+      id: 'enemy-1', name: 'Slime', isParty: false, position: [1, 1],
+      hp: 50, maxHp: 50,
+    });
+
+    return createTestState({
+      party: [party],
+      enemies: [enemy],
+      grid,
+      turnOrder: [
+        { entityId: 'party-1', speed: 9, hasActed: false, isDefending: false },
+        { entityId: 'enemy-1', speed: 5, hasActed: false, isDefending: false },
+      ],
+    });
+  }
+
+  const lookup = (id: string): SkillDefinition => {
+    if (id === 'poison-skill') {
+      return createTestSkill({
+        id: 'poison-skill', tpCost: 4, bodyPartRequired: 'head',
+        effects: [{ type: 'ailment', ailmentType: 'poison', chance: 100, damagePerTurn: 5, duration: 3 }],
+      });
+    }
+    throw new Error(`Unknown skill: ${id}`);
+  };
+
+  it('adds bonus damage per turn to poison', () => {
+    const state = setupPoisonCombat();
+    const result = executeSkillAction(state, 'party-1', 'poison-skill', [1, 1], lowRNG, lookup);
+
+    const enemy = result.state.enemies.find((e) => e.id === 'enemy-1');
+    // Base 5 + bonus 2 = 7 dmg/turn
+    expect(enemy!.ailments.poison).not.toBeNull();
+    expect(enemy!.ailments.poison!.damagePerTurn).toBe(7);
+  });
+
+  it('does not add bonus without the passive', () => {
+    const state = setupPoisonCombat();
+    const stateNoPassive = {
+      ...state,
+      party: state.party.map((p) => ({ ...p, passiveModifiers: [] })),
+    };
+    const result = executeSkillAction(stateNoPassive, 'party-1', 'poison-skill', [1, 1], lowRNG, lookup);
+
+    const enemy = result.state.enemies.find((e) => e.id === 'enemy-1');
+    expect(enemy!.ailments.poison!.damagePerTurn).toBe(5); // Base only
   });
 });
