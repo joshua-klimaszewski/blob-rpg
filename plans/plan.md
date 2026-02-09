@@ -868,6 +868,46 @@ These systems were researched but intentionally excluded from MVP scope:
 
 **PR:** feat/dungeon-ui-polish (new branch from main)
 
+### Sprint 10 — Full QA Session & Bug Fixes (2026-02-08)
+
+**Goal:** Comprehensive QA of all implemented screens with agent-browser visual testing. Fix critical bugs found.
+
+**Bugs Found & Fixed:**
+- [x] **CRITICAL: Combat soft-lock on enemy turns** — Enemy turn processing got stuck on "Slime is acting..." indefinitely. Root cause: nested `setTimeout` in `CombatScreen.tsx` useEffect — the inner timer (for `advanceToNext`) was not tracked by the cleanup function, causing a race condition when the effect re-ran after `processEnemyTurn` state update. Fix: track both outer and inner timers in cleanup. (2026-02-08)
+- [x] **Round counter stuck at "Round 1"** — `CombatHUD` computed rounds from `hasActed` count, but `advanceTurn()` resets `hasActed` per-actor as it advances, so the count never reached a full cycle. Fix: added `round` field to `CombatState`, incremented in `advanceTurn()` when index wraps to 0, display directly in `CombatHUD`. (2026-02-08)
+
+**Bugs Found (Not Fixed — Pre-existing):**
+- **Dungeon left-edge white strip** — When player is near the left edge of the dungeon, the viewport shows a white area to the left of the map boundary. The camera doesn't clamp properly at map edges. Low priority.
+
+**Suggestions for Improvement:**
+- **Town screen**: Buttons work well, good disabled state for coming-soon items. Consider adding a game title/logo above "Town" heading for branding.
+- **Character screen**: Clean layout with tabs, stats, equipment slots, and skill list. Skill descriptions and level requirements are clear. Consider highlighting the stat that matters for each class (e.g., bold STR for Ironblob, bold INT for Sparkblob).
+- **Party formation**: Inverted color toggle is intuitive. "Tap to toggle. 4/4 active members" instruction is clear.
+- **Dungeon viewport**: Fog of war works well with 3 visibility states. Minimap is functional but small — consider making the collapsed minimap slightly larger (currently hard to read at 4px/tile). Wall vs fog differentiation is good after the Phase 2b polish.
+- **Combat grid**: 3x3 grid is clear, tile selection with inverted colors works well. "Select a target" / "Tap Attack to confirm" two-step flow prevents misclicks.
+- **Turn order timeline**: Readable with checkmarks for acted entities and strikethrough for dead ones. Shield icon for defend is nice.
+- **Combo counter**: Good visual feedback — turns red at x3+, draws attention.
+- **Party HP bars**: Clean and readable. Damage numbers appear next to HP when hit.
+- **FOE encounters**: "No escape" + disabled Flee button correctly communicates FOE fight severity.
+- **Victory/defeat transitions**: Auto-return after 2s works. Dungeon state persists through combat correctly.
+- **Encounter gauge**: Green fill at bottom is subtle but functional. Consider making it slightly taller for better visibility on mobile.
+
+**Test Coverage:**
+- 341 tests passing (no regressions from bug fixes)
+- Build verified clean
+
+**Files Modified:**
+- `src/components/combat/CombatScreen.tsx` — Fixed enemy turn timer cleanup (inner setTimeout)
+- `src/types/combat.ts` — Added `round` field to `CombatState`
+- `src/systems/combat.ts` — Added `round: 1` to `initializeCombat`, increment in `advanceTurn` on wrap
+- `src/components/combat/CombatHUD.tsx` — Use `combat.round` directly instead of computing from hasActed
+- `src/systems/combat.test.ts` — Added `round: 1` to test state helper
+- `src/systems/skill-execution.test.ts` — Added `round: 1` to test state helper
+
+**Screenshots:** 23 screenshots saved to `~/Desktop/blob-rpg-screenshots/qa-session/`
+
+**PR:** qa/full-qa-session (branch from main)
+
 ---
 
 ## Research Notes

@@ -65,6 +65,7 @@ function createTestState(overrides?: Partial<CombatState>): CombatState {
     enemies: [],
     grid: createEmptyGrid(),
     comboCounter: 0,
+    round: 1,
     canFlee: true,
     ...overrides,
   };
