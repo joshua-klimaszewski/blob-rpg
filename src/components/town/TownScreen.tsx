@@ -4,6 +4,7 @@ import { usePartyStore } from '../../stores/partyStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useQuestStore } from '../../stores/questStore'
 import { useGuildStore } from '../../stores/guildStore'
+import { QUESTS } from '../../data/quests/index'
 
 export function TownScreen() {
   const setScreen = useGameStore((s) => s.setScreen)
@@ -12,6 +13,8 @@ export function TownScreen() {
   const initializeRoster = usePartyStore((s) => s.initializeRoster)
   const gold = useInventoryStore((s) => s.gold)
   const activeQuests = useQuestStore((s) => s.activeQuests)
+  const floorsReached = useQuestStore((s) => s.floorsReached)
+  const isQuestActive = useQuestStore((s) => s.isQuestActive)
   const guildName = useGuildStore((s) => s.currentGuildName)
 
   // Auto-initialize roster on first visit
@@ -27,6 +30,13 @@ export function TownScreen() {
 
   const pendingQuests = activeQuests.filter((q) => !q.claimed).length
   const claimableQuests = activeQuests.filter((q) => q.completed && !q.claimed).length
+
+  // Calculate new (unaccepted) quests
+  const availableQuests = QUESTS.filter((quest) => {
+    if (!quest.requiredFloor) return true
+    return floorsReached.includes(quest.requiredFloor)
+  })
+  const newQuestsCount = availableQuests.filter((quest) => !isQuestActive(quest.id)).length
 
   return (
     <div className="flex flex-col items-center gap-4 p-6">
@@ -95,7 +105,9 @@ export function TownScreen() {
           onClick={() => setScreen('guild')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
-          Quests{claimableQuests > 0 ? ` (${claimableQuests})` : ''}
+          Quests
+          {claimableQuests > 0 && ` (${claimableQuests})`}
+          {newQuestsCount > 0 && <span className="ml-1">●</span>}
         </button>
 
         <button
