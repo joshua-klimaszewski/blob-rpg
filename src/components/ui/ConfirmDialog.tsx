@@ -15,7 +15,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 p-6">
-      <div className="bg-paper border-2 border-ink p-6 max-w-xs w-full">
+      <div className="bg-paper border-2 border-ink p-6 max-w-half w-full">
         <p className="text-sm mb-6">{message}</p>
         <div className="flex gap-3">
           <button

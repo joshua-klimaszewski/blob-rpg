@@ -35,7 +35,7 @@ export function GuildNameScreen() {
   return (
     <div className="flex flex-col min-h-dvh p-6">
       {/* Header with back button */}
-      <div className="flex justify-between items-center w-full max-w-xs mx-auto">
+      <div className="flex justify-between items-center w-full max-w-half mx-auto">
         <h1 className="text-2xl font-bold">Name Your Guild</h1>
         <button
           onClick={() => setScreen('title')}
@@ -47,7 +47,7 @@ export function GuildNameScreen() {
 
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
 
-        <div className="w-full max-w-xs">
+        <div className="w-full max-w-half">
           <input
             type="text"
             value={name}
@@ -60,7 +60,7 @@ export function GuildNameScreen() {
           />
         </div>
 
-        <div className="w-full max-w-xs">
+        <div className="w-full max-w-half">
           <button
             onClick={handleBegin}
             disabled={!name.trim()}

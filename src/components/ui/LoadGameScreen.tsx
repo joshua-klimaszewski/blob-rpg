@@ -68,7 +68,7 @@ export function LoadGameScreen() {
     return (
       <div className="flex flex-col items-center h-dvh">
         {/* Header with back button */}
-        <div className="flex justify-between items-center w-full max-w-xs pt-6 px-6 pb-2">
+        <div className="flex justify-between items-center w-full max-w-half pt-6 px-6 pb-2">
           <h1 className="text-2xl font-bold">{selectedGuild.name}</h1>
           <button
             onClick={() => setSelectedGuild(null)}
@@ -80,7 +80,7 @@ export function LoadGameScreen() {
         <div className="w-full border-b-2 border-ink" />
 
         <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
-          <div className="flex flex-col gap-3 w-full max-w-xs">
+          <div className="flex flex-col gap-3 w-full max-w-half">
             {/* Suspend save (if exists) */}
             {selectedGuild.hasSuspendSave && (
               <button
@@ -117,7 +117,7 @@ export function LoadGameScreen() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 w-full max-w-xs px-6 pb-6 pt-3 border-t border-gray-200">
+        <div className="flex flex-col gap-3 w-full max-w-half px-6 pb-6 pt-3 border-t border-gray-200">
           <button
             onClick={() => handleDeleteGuild(selectedGuild)}
             className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
@@ -142,7 +142,7 @@ export function LoadGameScreen() {
   return (
     <div className="flex flex-col items-center h-dvh">
       {/* Header with back button */}
-      <div className="flex justify-between items-center w-full max-w-xs pt-6 px-6 pb-2">
+      <div className="flex justify-between items-center w-full max-w-half pt-6 px-6 pb-2">
         <h1 className="text-2xl font-bold">Load Game</h1>
         <button
           onClick={() => setScreen('title')}
@@ -154,7 +154,7 @@ export function LoadGameScreen() {
       <div className="w-full border-b-2 border-ink" />
 
       <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
-        <div className="flex flex-col gap-3 w-full max-w-xs">
+        <div className="flex flex-col gap-3 w-full max-w-half">
           {registry.guilds.map((guild) => (
             <button
               key={guild.id}

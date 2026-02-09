@@ -53,7 +53,7 @@ export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
         <div className="text-center text-sm font-bold mb-2">
           {selectedItem.name} — Select Ally
         </div>
-        <div className="flex flex-col gap-1 max-w-xs mx-auto">
+        <div className="flex flex-col gap-1 max-w-half mx-auto">
           {party.map((member) => (
             <button
               key={member.id}
@@ -90,7 +90,7 @@ export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
   return (
     <div className="px-4 py-3 border-t-2 border-ink bg-paper">
       <div className="text-center text-sm font-bold mb-2">Items</div>
-      <div className="flex flex-col gap-1 max-w-xs mx-auto">
+      <div className="flex flex-col gap-1 max-w-half mx-auto">
         {heldItems.length === 0 ? (
           <div className="text-sm text-gray-500 text-center py-2">No items</div>
         ) : (

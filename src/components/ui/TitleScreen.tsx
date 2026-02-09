@@ -28,12 +28,12 @@ export function TitleScreen() {
       </div>
 
       {migrated && (
-        <div className="text-xs text-center border border-ink px-3 py-2 max-w-xs">
+        <div className="text-xs text-center border border-ink px-3 py-2 max-w-half">
           Legacy save data migrated to &quot;Legacy Guild&quot;
         </div>
       )}
 
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-col gap-3 w-full max-w-half">
         {canCreateNew && (
           <button
             onClick={() => setScreen('guild-name')}

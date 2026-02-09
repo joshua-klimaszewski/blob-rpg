@@ -277,7 +277,7 @@ export function CombatScreen() {
           <div className="text-center text-sm font-bold mb-2">
             {pendingSkill.name} — Select Ally
           </div>
-          <div className="flex flex-col gap-1 max-w-xs mx-auto">
+          <div className="flex flex-col gap-1 max-w-half mx-auto">
             {combat.party.map((member, idx) => (
               <button
                 key={member.id}
@@ -316,7 +316,7 @@ export function CombatScreen() {
 
       {/* Party Status */}
       <div className="border-t-2 border-ink px-4 py-3">
-        <div className="flex flex-col gap-1 max-w-xs mx-auto">
+        <div className="flex flex-col gap-1 max-w-half mx-auto">
           {combat.party.map((member) => {
             // Find damage displays targeting this party member
             const partyDamage = damageDisplays.find((d) => d.targetId === member.id);

@@ -30,7 +30,7 @@ export function InnScreen() {
   return (
     <div className="flex flex-col items-center gap-6 p-6">
       {/* Header with back button */}
-      <div className="flex justify-between items-center w-full max-w-xs">
+      <div className="flex justify-between items-center w-full max-w-half">
         <h1 className="text-2xl font-bold">Inn</h1>
         <button
           onClick={() => setScreen('town')}
@@ -43,7 +43,7 @@ export function InnScreen() {
       <div className="text-sm font-bold">Gold: {gold}G</div>
 
       {/* Party HP/TP summary */}
-      <div className="w-full max-w-xs flex flex-col gap-2">
+      <div className="w-full max-w-half flex flex-col gap-2">
         {roster.map((member) => (
           <div key={member.id} className="flex items-center justify-between text-sm">
             <span className="font-bold truncate mr-2">{member.name}</span>
@@ -64,7 +64,7 @@ export function InnScreen() {
       )}
 
       {/* Rest options */}
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-col gap-3 w-full max-w-half">
         <button
           onClick={() => handleRest(1.0, fullCost)}
           disabled={gold < fullCost || allFull}
