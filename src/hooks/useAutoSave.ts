@@ -6,7 +6,7 @@
  * - Dungeon: suspend save when dungeon state changes
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { useGuildStore } from '../stores/guildStore';
 import { usePartyStore } from '../stores/partyStore';
@@ -22,6 +22,36 @@ const TOWN_SCREENS = new Set([
 ]);
 
 const DEBOUNCE_MS = 500;
+
+// Simple event counter for save indicator
+let saveEventCounter = 0;
+const saveEventListeners = new Set<() => void>();
+
+function notifySaveEvent() {
+  saveEventCounter++;
+  saveEventListeners.forEach((l) => l());
+}
+
+/** Subscribe to auto-save events. Returns an incrementing counter (0 = no saves yet). */
+export function useAutoSaveEvent(): number {
+  return useSyncExternalStore(
+    (cb) => {
+      saveEventListeners.add(cb);
+      return () => saveEventListeners.delete(cb);
+    },
+    () => saveEventCounter,
+  );
+}
+
+function doAutoSaveTown() {
+  autoSaveTown();
+  notifySaveEvent();
+}
+
+function doAutoSaveDungeon() {
+  autoSaveDungeon();
+  notifySaveEvent();
+}
 
 export function useAutoSave(): void {
   const townTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,11 +73,10 @@ export function useAutoSave(): void {
 
       if (townTimerRef.current) clearTimeout(townTimerRef.current);
       townTimerRef.current = setTimeout(() => {
-        // Re-check conditions at save time
         const currentScreen = useGameStore.getState().screen;
         const currentGuildId = useGuildStore.getState().currentGuildId;
         if (currentGuildId && TOWN_SCREENS.has(currentScreen)) {
-          autoSaveTown();
+          doAutoSaveTown();
         }
       }, DEBOUNCE_MS);
     }
@@ -69,7 +98,7 @@ export function useAutoSave(): void {
 
       const guildId = useGuildStore.getState().currentGuildId;
       if (guildId && TOWN_SCREENS.has(next)) {
-        autoSaveTown();
+        doAutoSaveTown();
       }
     });
     return () => unsubscribe();
@@ -85,12 +114,11 @@ export function useAutoSave(): void {
 
       if (dungeonTimerRef.current) clearTimeout(dungeonTimerRef.current);
       dungeonTimerRef.current = setTimeout(() => {
-        // Re-check conditions at save time
         const currentScreen = useGameStore.getState().screen;
         const currentGuildId = useGuildStore.getState().currentGuildId;
         const currentDungeon = useDungeonStore.getState().dungeon;
         if (currentGuildId && currentScreen === 'dungeon' && currentDungeon) {
-          autoSaveDungeon();
+          doAutoSaveDungeon();
         }
       }, DEBOUNCE_MS);
     });

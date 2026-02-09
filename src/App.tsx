@@ -14,6 +14,7 @@ import { HowToPlayScreen } from './components/help/HowToPlayScreen'
 import { InventoryScreen } from './components/town/InventoryScreen'
 import { DungeonSelectScreen } from './components/dungeon/DungeonSelectScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
+import { AutoSaveIndicator } from './components/ui/AutoSaveIndicator'
 import { useAutoSave } from './hooks/useAutoSave'
 
 const screens = {
@@ -52,6 +53,7 @@ export function App() {
   return (
     <div className="relative min-h-dvh bg-paper text-ink font-mono">
       <Screen />
+      <AutoSaveIndicator />
       {helpOpen && <HelpOverlay />}
     </div>
   )
