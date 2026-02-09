@@ -17,6 +17,7 @@ import type { GridPosition } from '../../types/combat';
 
 export function CombatScreen() {
   const combat = useCombatStore((s) => s.combat);
+  const rewards = useCombatStore((s) => s.rewards);
   const selectAction = useCombatStore((s) => s.selectAction);
   const processEnemyTurn = useCombatStore((s) => s.processEnemyTurn);
   const advanceToNext = useCombatStore((s) => s.advanceToNext);
@@ -415,7 +416,19 @@ export function CombatScreen() {
         <div className="absolute inset-0 flex items-center justify-center bg-paper/80 animate-[overlayFadeIn_0.3s_ease-out]">
           <div className="bg-ink text-paper px-8 py-6 border-2 border-paper text-center">
             <div className="text-2xl font-bold mb-2">Victory!</div>
-            <div className="text-sm">Returning to dungeon...</div>
+            {rewards && (
+              <div className="text-sm mb-2">
+                <div>+{rewards.xp} XP  +{rewards.gold}G</div>
+                {rewards.materials.length > 0 && (
+                  <div className="mt-1">
+                    {rewards.materials.map((m) => (
+                      <span key={m.id} className="mr-2">{m.id} x{m.quantity}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-xs">Returning to dungeon...</div>
           </div>
         </div>
       )}
