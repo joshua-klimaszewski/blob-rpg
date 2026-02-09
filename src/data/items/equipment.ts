@@ -15,6 +15,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { str: 3 },
     classRestriction: null,
     description: 'A dull but serviceable blade. +3 STR.',
+    buyPrice: 50,
   },
   {
     id: 'gnarled-staff',
@@ -23,6 +24,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { int: 3 },
     classRestriction: null,
     description: 'A twisted wooden staff humming with faint energy. +3 INT.',
+    buyPrice: 50,
   },
   {
     id: 'iron-mace',
@@ -31,6 +33,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { str: 2, vit: 1 },
     classRestriction: null,
     description: 'A heavy mace that hits hard and takes hits. +2 STR, +1 VIT.',
+    buyPrice: 80,
   },
 
   // Armor
@@ -41,6 +44,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { vit: 2, hp: 10 },
     classRestriction: null,
     description: 'Tough but flexible leather protection. +2 VIT, +10 HP.',
+    buyPrice: 100,
   },
   {
     id: 'cloth-robe',
@@ -49,6 +53,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { wis: 2, tp: 5 },
     classRestriction: null,
     description: 'Light robes woven with faint magic. +2 WIS, +5 TP.',
+    buyPrice: 100,
   },
 
   // Accessories
@@ -59,6 +64,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { agi: 3 },
     classRestriction: null,
     description: 'A small charm that quickens its holder. +3 AGI.',
+    buyPrice: 120,
   },
   {
     id: 'lucky-coin',
@@ -67,6 +73,7 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { luc: 5 },
     classRestriction: null,
     description: 'A coin that always lands on the right side. +5 LUC.',
+    buyPrice: 75,
   },
   {
     id: 'iron-ring',
@@ -75,5 +82,6 @@ export const EQUIPMENT: EquipmentDefinition[] = [
     bonuses: { vit: 2 },
     classRestriction: null,
     description: 'A sturdy iron band. +2 VIT.',
+    buyPrice: 60,
   },
 ];

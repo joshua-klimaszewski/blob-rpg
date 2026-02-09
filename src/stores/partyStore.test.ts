@@ -93,6 +93,7 @@ describe('PartyStore', () => {
 
       const combatParty = active.map((m) => ({
         ...m,
+        definitionId: m.classId,
         hp: 10,
         tp: 5,
         position: null,

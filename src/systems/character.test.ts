@@ -93,6 +93,7 @@ function createTestEquipment(overrides?: Partial<EquipmentDefinition>): Equipmen
     bonuses: { str: 3 },
     classRestriction: null,
     description: 'A test weapon',
+    buyPrice: 50,
     ...overrides,
   };
 }

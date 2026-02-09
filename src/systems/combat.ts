@@ -39,9 +39,11 @@ import type {
   FleeSuccessEvent,
   FleeFailedEvent,
   CombatRewards,
+  EnemyDefinition,
 } from '../types/combat';
 
 import type { SkillDefinition, SkillEffect } from '../types/character';
+import type { ConsumableDefinition } from '../types/economy';
 
 // ============================================================================
 // Random Number Generator (Injectable for Testing)
@@ -984,6 +986,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
   const party: CombatEntity[] = encounter.party.map((member) => ({
     id: member.id,
     name: member.name,
+    definitionId: member.classId,
     hp: member.hp,
     maxHp: member.maxHp,
     tp: member.tp,
@@ -1019,6 +1022,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     const enemy: CombatEntity = {
       id: placement.instanceId,
       name: placement.definition.name,
+      definitionId: placement.definition.id,
       hp: placement.definition.maxHp,
       maxHp: placement.definition.maxHp,
       tp: placement.definition.maxTp,
@@ -1168,6 +1172,62 @@ export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionRe
 }
 
 /**
+ * Execute an item action (use consumable on ally)
+ */
+export function executeItemAction(
+  state: CombatState,
+  actorId: string,
+  targetId: string,
+  consumable: ConsumableDefinition,
+): ActionResult {
+  const actor = findEntity(state, actorId);
+  const target = findEntity(state, targetId);
+  if (!actor || !target) return { state, events: [] };
+
+  const events: CombatEventUnion[] = [];
+  let newState = state;
+
+  switch (consumable.effect.type) {
+    case 'heal-hp': {
+      const healAmount = Math.min(consumable.effect.amount, target.maxHp - target.hp);
+      const healed: CombatEntity = { ...target, hp: target.hp + healAmount };
+      newState = updateEntity(newState, targetId, healed);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: healAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'heal-tp': {
+      const tpAmount = Math.min(consumable.effect.amount, target.maxTp - target.tp);
+      const restored: CombatEntity = { ...target, tp: target.tp + tpAmount };
+      newState = updateEntity(newState, targetId, restored);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: tpAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'cure-ailments': {
+      const cured: CombatEntity = {
+        ...target,
+        ailments: { poison: null, paralyze: null, sleep: null, blind: null },
+      };
+      newState = updateEntity(newState, targetId, cured);
+      break;
+    }
+  }
+
+  return { state: newState, events };
+}
+
+/**
  * Execute a combat action
  * Routes to specific action handlers, checks victory/defeat, advances turn
  */
@@ -1209,9 +1269,11 @@ export function executeAction(
       break;
     }
 
-    case 'item':
-      // MVP: Not implemented yet
+    case 'item': {
+      // Item actions are handled directly by the store (which calls executeItemAction)
+      // since they need consumable lookup and inventory deduction
       return { state, events: [] };
+    }
 
     default:
       return { state, events: [] };
@@ -1923,19 +1985,42 @@ export function tickBuffs(entity: CombatEntity): CombatEntity {
 /**
  * Calculate combat rewards after victory
  */
-export function calculateRewards(state: CombatState): CombatRewards {
-  // MVP: Fixed 100 XP, no material drops
-  let totalXp = 100;
+export function calculateRewards(
+  state: CombatState,
+  rng: RNG = defaultRNG,
+  getEnemyDef?: (id: string) => EnemyDefinition | undefined,
+): CombatRewards {
+  let totalXp = 0;
+  let totalGold = 0;
+  const materialCounts: Record<string, number> = {};
 
-  // Add XP from defeated enemies
   for (const enemy of state.enemies) {
     if (!isAlive(enemy)) {
-      totalXp += 20; // MVP: fixed 20 XP per enemy
+      // Look up the enemy definition for drop data
+      const def = getEnemyDef?.(enemy.definitionId);
+      if (def) {
+        totalXp += def.dropTable.xp;
+        const { min, max } = def.dropTable.gold;
+        totalGold += min + Math.floor(rng() * (max - min + 1));
+
+        for (const drop of def.dropTable.materials) {
+          if (rng() < drop.chance) {
+            materialCounts[drop.materialId] = (materialCounts[drop.materialId] ?? 0) + 1;
+          }
+        }
+      } else {
+        // Fallback if no definition found
+        totalXp += 20;
+        totalGold += 10;
+      }
     }
   }
 
+  const materials = Object.entries(materialCounts).map(([id, quantity]) => ({ id, quantity }));
+
   return {
     xp: totalXp,
-    materials: [],
+    gold: totalGold,
+    materials,
   };
 }

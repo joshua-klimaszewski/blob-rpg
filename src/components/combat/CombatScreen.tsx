@@ -6,14 +6,18 @@ import type { SelectedAction } from './ActionMenu';
 import { SkillList } from './SkillList';
 import { CombatHUD } from './CombatHUD';
 import { TurnOrderTimeline } from './TurnOrderTimeline';
+import { ItemMenu } from './ItemMenu';
 import { useCombatEvents } from '../../hooks/useCombatEvents';
+import { useInventoryStore } from '../../stores/inventoryStore';
 import { findEntity, isAlive } from '../../systems/combat';
 import { getSkill } from '../../data/classes/index';
+import { getAllConsumables } from '../../data/items/index';
 import type { SkillDefinition } from '../../types/character';
 import type { GridPosition } from '../../types/combat';
 
 export function CombatScreen() {
   const combat = useCombatStore((s) => s.combat);
+  const rewards = useCombatStore((s) => s.rewards);
   const selectAction = useCombatStore((s) => s.selectAction);
   const processEnemyTurn = useCombatStore((s) => s.processEnemyTurn);
   const advanceToNext = useCombatStore((s) => s.advanceToNext);
@@ -25,7 +29,12 @@ export function CombatScreen() {
   const [showSkillList, setShowSkillList] = useState(false);
   const [pendingSkill, setPendingSkill] = useState<SkillDefinition | null>(null);
   const [allySelectMode, setAllySelectMode] = useState(false);
+  const [showItemMenu, setShowItemMenu] = useState(false);
   const processingRef = useRef(false);
+
+  // Check if player has any consumable items
+  const inventoryConsumables = useInventoryStore((s) => s.consumables);
+  const hasItems = getAllConsumables().some((c) => (inventoryConsumables[c.id] ?? 0) > 0);
 
   // Get current actor info
   const currentEntry = combat?.turnOrder[combat.currentActorIndex];
@@ -85,6 +94,7 @@ export function CombatScreen() {
     if (showSkillList) setShowSkillList(false);
     if (pendingSkill !== null) setPendingSkill(null);
     if (allySelectMode) setAllySelectMode(false);
+    if (showItemMenu) setShowItemMenu(false);
   }
 
   const handleAttackButton = useCallback(() => {
@@ -230,7 +240,19 @@ export function CombatScreen() {
     setPendingSkill(null);
     setAllySelectMode(false);
     setShowSkillList(false);
+    setShowItemMenu(false);
   }, []);
+
+  const handleItemsButton = useCallback(() => {
+    setShowItemMenu(true);
+    setSelectedAction(null);
+    setSelectedTile(null);
+  }, []);
+
+  const handleItemUse = useCallback(() => {
+    setShowItemMenu(false);
+    setTimeout(() => advanceToNext(), 300);
+  }, [advanceToNext]);
 
   if (!combat) {
     return (
@@ -368,16 +390,28 @@ export function CombatScreen() {
         />
       )}
 
+      {/* Item Menu Overlay */}
+      {showItemMenu && currentActor && (
+        <ItemMenu
+          actor={currentActor}
+          party={combat.party}
+          onUse={handleItemUse}
+          onCancel={handleCancel}
+        />
+      )}
+
       {/* Action Menu */}
-      {combat.phase === 'active' && !showSkillList && !allySelectMode && (
+      {combat.phase === 'active' && !showSkillList && !allySelectMode && !showItemMenu && (
         <ActionMenu
           isPlayerTurn={isPlayerTurn}
           canFlee={combat.canFlee}
           hasSkills={actorSkills.length > 0}
+          hasItems={hasItems}
           selectedAction={selectedAction}
           selectedTile={selectedTile}
           onAttack={selectedAction === 'skill-targeting' ? handleSkillConfirm : handleAttackButton}
           onSkills={handleSkillsButton}
+          onItems={handleItemsButton}
           onDefend={handleDefend}
           onFlee={handleFlee}
           onCancel={handleCancel}
@@ -389,7 +423,19 @@ export function CombatScreen() {
         <div className="absolute inset-0 flex items-center justify-center bg-paper/80 animate-[overlayFadeIn_0.3s_ease-out]">
           <div className="bg-ink text-paper px-8 py-6 border-2 border-paper text-center">
             <div className="text-2xl font-bold mb-2">Victory!</div>
-            <div className="text-sm">Returning to dungeon...</div>
+            {rewards && (
+              <div className="text-sm mb-2">
+                <div>+{rewards.xp} XP  +{rewards.gold}G</div>
+                {rewards.materials.length > 0 && (
+                  <div className="mt-1">
+                    {rewards.materials.map((m) => (
+                      <span key={m.id} className="mr-2">{m.id} x{m.quantity}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-xs">Returning to dungeon...</div>
           </div>
         </div>
       )}

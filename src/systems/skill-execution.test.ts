@@ -40,6 +40,7 @@ function createTestEntity(overrides?: Partial<CombatEntity>): CombatEntity {
   return {
     id: 'test-entity',
     name: 'Test',
+    definitionId: 'test',
     hp: 50,
     maxHp: 50,
     tp: 20,
