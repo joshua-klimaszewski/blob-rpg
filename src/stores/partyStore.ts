@@ -69,7 +69,14 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
             const updated = { ...member, xp: member.xp + amount };
             const classData = getClass(updated.classId);
             const { member: leveled } = processLevelUps(updated, classData);
-            return leveled;
+
+            // Recalculate stats to restore equipment + passive bonuses after level-up
+            const equippedItems = Object.values(leveled.equipment)
+              .filter((id): id is string => id !== null)
+              .map((id) => getEquipment(id))
+              .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
+
+            return recalculatePartyMember(leveled, classData, equippedItems, getSkill);
           });
 
           return { roster: newRoster };
@@ -118,7 +125,7 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
               .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
 
             const classData = getClass(member.classId);
-            return recalculatePartyMember(updatedMember, classData, equippedItems);
+            return recalculatePartyMember(updatedMember, classData, equippedItems, getSkill);
           });
 
           return { roster: newRoster };
@@ -135,9 +142,20 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
         if (!check.canLearn) return false;
 
         set((state) => ({
-          roster: state.roster.map((m) =>
-            m.id === memberId ? learnSkill(m, skill) : m
-          ),
+          roster: state.roster.map((m) => {
+            if (m.id !== memberId) return m;
+
+            const learned = learnSkill(m, skill);
+
+            // Recalculate stats to apply passive bonuses if a passive was learned
+            const equippedItems = Object.values(learned.equipment)
+              .filter((id): id is string => id !== null)
+              .map((id) => getEquipment(id))
+              .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
+
+            const classData = getClass(learned.classId);
+            return recalculatePartyMember(learned, classData, equippedItems, getSkill);
+          }),
         }));
 
         return true;
