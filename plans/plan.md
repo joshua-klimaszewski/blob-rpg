@@ -92,37 +92,51 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 > 6 blob classes with skill trees and equipment.
 
-- [ ] Character stat types (HP, TP, STR, VIT, INT, WIS, AGI, LUC)
-- [ ] Leveling system (XP thresholds, stat growth rates per class)
-- [ ] 6 blob class data definitions (base stats, growth rates, skill tree)
-- [ ] Skill trees: hub-and-spoke model (central core skill + 3-4 branches)
-  - 25/25/25/25 distribution: Passives / Actives / Synergy-conditionals / Ultimate
-  - Point-based investment, prerequisites
-- [ ] Skill tree UI (mobile-friendly, hub-and-spoke layout)
-- [ ] Equipment types: weapon, armor, 2 accessory slots
-- [ ] Equipment stat modifiers + equip/unequip logic
-- [ ] Character sheet UI
-- [ ] Party formation screen (choose 4 of 6 for the dungeon)
+**4a — Core Character System (done):**
+- [x] Character stat types (HP, TP, STR, VIT, INT, WIS, AGI, LUC) (2026-02-08)
+- [x] Leveling system (XP thresholds, stat growth rates per class, max level 20) (2026-02-08)
+- [x] 6 blob class data definitions (base stats, growth rates, 36 skills total) (2026-02-08)
+- [x] Skill execution engine in combat (damage, displacement, bind, ailment, heal, conditional, multi-hit, AOE splash, self-buff) (2026-02-08)
+- [x] Equipment types: weapon, armor, 2 accessory slots (2026-02-08)
+- [x] Equipment stat modifiers applied to combat calculations (2026-02-08)
+- [x] Character sheet UI with tabs for all 6 roster members, stats grid, equipment display, skill list (2026-02-08)
+- [x] Party formation screen (choose 4 of 6, tap-to-toggle) (2026-02-08)
+- [x] Skill learning with SP cost and level requirements (2026-02-08)
+
+**4b — Character System Gaps (remaining):**
+- [ ] Hub-and-spoke skill tree visualization (currently a flat list — needs visual graph with branches, prerequisites, and category grouping)
+- [ ] Equipment management from character sheet (equip/unequip/swap — currently display-only, comment says "needs inventory UI")
+- [ ] Passive skill auto-application (passives are defined in skill data but not applied to character stats — e.g. Ironblob's "Iron Wall" +VIT passive)
+- [ ] TP costs enforced in skill usage (verify TP is deducted and skills disabled when insufficient TP)
+- [ ] Level-up notification UI (visual feedback when a character levels up after combat)
 
 ### Phase 5: Town & Economy
 
 > Material-driven shop, inn, guild, saves.
 
-- [ ] Town screen with sub-location navigation
-- [ ] Inn: rest to restore HP/TP, cost scales with party level, partial rest option
-- [ ] Shop — material unlock system:
-  - Global sold-material counters
-  - Selling N of a specific drop unlocks new items
-  - Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound")
-- [ ] Shop — buy equipment + consumables from unlocked inventory
-- [ ] Guild / quest board (kill X, gather Y, reach floor Z)
-- [ ] Save/load system (localStorage, Zustand persist middleware)
-- [ ] Autosave at dungeon checkpoints
+**5a — Town Core (done):**
+- [x] Town screen with sub-location navigation (Enter Dungeon, Inn, Shop, Guild, Characters, Party, How to Play) (2026-02-08)
+- [x] Inn: full rest (100% HP/TP) and quick rest (50% HP/TP), cost scales with party level (2026-02-08)
+- [x] Shop — material unlock system with global sold-material counters (2026-02-08)
+- [x] Shop — buy equipment + consumables (Medica, Amrita, Theriaca) from unlocked inventory (2026-02-08)
+- [x] Shop — sell materials tab (2026-02-08)
+- [x] Guild / quest board: 10 quests (kill, gather, explore) with accept/track/claim flow (2026-02-08)
+- [x] Save/load system (Zustand persist middleware to localStorage for party, inventory, quests, game state) (2026-02-08)
+- [x] Title screen with Continue (if save exists) / New Game flow (2026-02-08)
+
+**5b — Economy & Persistence Gaps (remaining):**
+- [ ] Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound" drops rare material) — drop tables exist but no condition checking
+- [ ] Autosave at dungeon checkpoints (checkpoint tiles exist but don't trigger a save)
+- [ ] Dungeon progress persistence between sessions (explored tiles, current floor, player position — currently lost on refresh)
+- [ ] Dungeon floor selection from town (currently hardcoded to F1 — should resume last floor or let player choose unlocked floors)
+- [ ] Death penalty design (party wipe returns to town — define what's lost: gold percentage? consumables? nothing?)
+- [ ] Bind-cure consumable (Theriaca cures ailments but not binds — add "Therica B" or similar)
 
 ### Phase 6: Content & Polish
 
 > Fill the first dungeon, balance, tutorial.
 
+**6a — First Dungeon Content (done):**
 - [x] Full first dungeon: 3 floors with increasing difficulty (2026-02-08)
 - [x] Enemy roster: 6 types (Slime, Mossy Slime, Fungoid, Sporebat, Crystal Beetle, Caveworm) (2026-02-08)
 - [x] Balance: floor encounter tables, material drops, 8 shop recipes, tiered XP/gold (2026-02-08)
@@ -131,9 +145,45 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [x] 10 quests across F1-F3 (kill, gather, explore) (2026-02-08)
 - [x] Floor transitions: exit → next floor or return to town (2026-02-08)
 - [x] How to Play / Glossary screen — 5-tab reference guide (Controls, Dungeon, Combat, Classes, Glossary) accessible from Town + "?" overlay from Dungeon/Combat HUDs (2026-02-08)
-- [ ] Tutorial / new game flow (guided first-run experience — separate from How to Play reference)
-- [ ] Accessibility pass (keyboard nav, screen reader labels, touch targets)
-- [ ] Performance (memoization, lazy loading)
+
+**6b — Combat & AI Depth (remaining):**
+- [ ] Enemy skill usage in AI — enemies currently only basic-attack; give enemies access to their defined skills (binds, displacement, ailments) with weighted selection based on AI pattern
+- [ ] FOE-specific combat encounters (FOEs should be significantly harder, use unique skills, have boss-like behavior)
+- [ ] Boss encounter on Floor 3 (gate the dungeon exit behind a mandatory boss fight)
+- [ ] FOE respawn on floor re-entry (CLAUDE.md specifies this, not implemented)
+- [ ] Combo counter feedback — reward multi-character combos more visibly (sound cue placeholder, screen shake, escalating text size)
+
+**6c — Onboarding & Tutorial (remaining):**
+- [ ] Guided first-run tutorial (separate from How to Play reference):
+  - First town visit: brief walkthrough of Inn/Shop/Guild
+  - First dungeon step: movement controls overlay
+  - First encounter: action menu walkthrough (attack → target → confirm)
+  - First skill: prompt to open Characters screen after first level-up
+- [ ] New Game class introduction (brief intro to each of the 6 blob classes when roster is created)
+
+**6d — Polish & QoL (remaining):**
+- [ ] Accessibility pass (keyboard nav for all menus, ARIA labels on interactive elements, screen reader support for combat events, focus management)
+- [ ] Performance (React.memo on tile components, lazy-load town sub-screens, virtualize long lists like skill trees)
+- [ ] Settings screen (accessible from town and title screen):
+  - Text size toggle (small/medium/large)
+  - Animation speed (normal/fast/instant)
+  - Clear save data with confirmation
+- [ ] Dungeon left-edge viewport clamp bug (white strip when player near left boundary — found in QA Sprint 10)
+- [ ] Minimap size increase (collapsed minimap at 4px/tile is hard to read — increase to 5-6px)
+- [ ] Encounter gauge height increase for mobile visibility
+
+### Phase 7: Second Dungeon & Endgame (post-MVP stretch)
+
+> Extend the game beyond the first dungeon. Only tackle after Phases 4b–6d are complete.
+
+- [ ] Second dungeon: "Frozen Hollows" (3 new floors, new tile types: ice/slide, dark/limited-vision)
+- [ ] 4-6 new enemy types with F4-F6 encounter tables
+- [ ] Tier 3 equipment unlocked via new materials
+- [ ] New quest set for second dungeon
+- [ ] FOE with chase AI pattern (pursues player in line of sight)
+- [ ] Conditional FOE mechanics (e.g. FOE that only moves when player faces away)
+- [ ] Second dungeon boss encounter
+- [ ] Town upgrades (expanded inn services, new shop tiers)
 
 ---
 
