@@ -19,7 +19,7 @@ export function CombatScreen() {
   const combat = useCombatStore((s) => s.combat);
   const rewards = useCombatStore((s) => s.rewards);
   const selectAction = useCombatStore((s) => s.selectAction);
-  const processEnemyTurn = useCombatStore((s) => s.processEnemyTurn);
+  const processEnemyTurnAndAdvance = useCombatStore((s) => s.processEnemyTurnAndAdvance);
   const advanceToNext = useCombatStore((s) => s.advanceToNext);
 
   const { damageDisplays, message, removeDamage } = useCombatEvents();
@@ -30,7 +30,6 @@ export function CombatScreen() {
   const [pendingSkill, setPendingSkill] = useState<SkillDefinition | null>(null);
   const [allySelectMode, setAllySelectMode] = useState(false);
   const [showItemMenu, setShowItemMenu] = useState(false);
-  const processingRef = useRef(false);
 
   // Check if player has any consumable items
   const inventoryConsumables = useInventoryStore((s) => s.consumables);
@@ -53,37 +52,25 @@ export function CombatScreen() {
   const combatPhase = combat?.phase;
   const combatActorIndex = combat?.currentActorIndex;
   useEffect(() => {
-    if (combatPhase !== 'active' || processingRef.current) return;
+    if (combatPhase !== 'active') return;
 
-    // Recompute current actor inside effect to avoid re-running on every state change
     const currentEntry = combat?.turnOrder[combat.currentActorIndex];
     const actor = combat && currentEntry ? findEntity(combat, currentEntry.entityId) : null;
-    const isEnemyActing = actor?.isParty === false && isAlive(actor);
 
     // Skip dead actors
     if (actor && !isAlive(actor)) {
-      const timer = setTimeout(() => {
-        advanceToNext();
-      }, 100);
+      const timer = setTimeout(() => advanceToNext(), 100);
       return () => clearTimeout(timer);
     }
 
-    // Auto-execute enemy turns
-    // Uses processingRef to prevent re-entry, but resets it in a finally-style
-    // pattern so the turn can never get permanently stuck.
-    if (isEnemyActing) {
-      processingRef.current = true;
-      const timer = setTimeout(() => {
-        processEnemyTurn();
-        advanceToNext();
-        processingRef.current = false;
-      }, 600);
-      return () => {
-        clearTimeout(timer);
-        processingRef.current = false;
-      };
+    // Auto-execute enemy turns with a single atomic store call
+    // processEnemyTurnAndAdvance does execute + advance in one set(),
+    // so no intermediate renders can cancel the advance.
+    if (actor && !actor.isParty && isAlive(actor)) {
+      const timer = setTimeout(() => processEnemyTurnAndAdvance(), 600);
+      return () => clearTimeout(timer);
     }
-  }, [combatActorIndex, combatPhase, combat, processEnemyTurn, advanceToNext]);
+  }, [combatActorIndex, combatPhase, combat, processEnemyTurnAndAdvance, advanceToNext]);
 
   // Reset UI state when turn changes
   const currentActorIndex = combat?.currentActorIndex;
