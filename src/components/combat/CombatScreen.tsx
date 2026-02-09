@@ -69,19 +69,18 @@ export function CombatScreen() {
     }
 
     // Auto-execute enemy turns
+    // Uses processingRef to prevent re-entry, but resets it in a finally-style
+    // pattern so the turn can never get permanently stuck.
     if (isEnemyActing) {
       processingRef.current = true;
-      let advanceTimer: ReturnType<typeof setTimeout>;
       const timer = setTimeout(() => {
         processEnemyTurn();
-        advanceTimer = setTimeout(() => {
-          advanceToNext();
-          processingRef.current = false;
-        }, 600);
-      }, 500);
+        advanceToNext();
+        processingRef.current = false;
+      }, 600);
       return () => {
         clearTimeout(timer);
-        clearTimeout(advanceTimer);
+        processingRef.current = false;
       };
     }
   }, [combatActorIndex, combatPhase, combat, processEnemyTurn, advanceToNext]);
