@@ -8,6 +8,9 @@ import { InnScreen } from './components/town/InnScreen'
 import { ShopScreen } from './components/town/ShopScreen'
 import { GuildScreen } from './components/town/GuildScreen'
 import { TitleScreen } from './components/ui/TitleScreen'
+import { GuildNameScreen } from './components/ui/GuildNameScreen'
+import { LoadGameScreen } from './components/ui/LoadGameScreen'
+import { SaveGameScreen } from './components/town/SaveGameScreen'
 import { HowToPlayScreen } from './components/help/HowToPlayScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
 
@@ -21,6 +24,9 @@ const screens = {
   inn: InnScreen,
   shop: ShopScreen,
   guild: GuildScreen,
+  'guild-name': GuildNameScreen,
+  'load-game': LoadGameScreen,
+  'save-game': SaveGameScreen,
   'how-to-play': HowToPlayScreen,
 } as const
 

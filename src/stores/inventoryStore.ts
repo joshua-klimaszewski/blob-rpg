@@ -6,7 +6,6 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { useQuestStore } from './questStore';
 
 interface InventoryStore {
@@ -61,9 +60,7 @@ const INITIAL_STATE = {
   ownedEquipment: [] as string[],
 };
 
-export const useInventoryStore = create<InventoryStore>()(
-  persist(
-    (set, get) => ({
+export const useInventoryStore = create<InventoryStore>((set, get) => ({
   ...INITIAL_STATE,
 
   addGold: (amount) => {
@@ -158,16 +155,4 @@ export const useInventoryStore = create<InventoryStore>()(
   reset: () => {
     set(INITIAL_STATE);
   },
-    }),
-    {
-      name: 'blob-rpg-inventory',
-      partialize: (state) => ({
-        gold: state.gold,
-        materials: state.materials,
-        soldMaterials: state.soldMaterials,
-        consumables: state.consumables,
-        ownedEquipment: state.ownedEquipment,
-      }),
-    },
-  ),
-);
+}));

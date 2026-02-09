@@ -9,6 +9,7 @@ export function DungeonScreen() {
   const dungeon = useDungeonStore((s) => s.dungeon)
   const floor = useDungeonStore((s) => s.floor)
   const warpToTown = useDungeonStore((s) => s.warpToTown)
+  const saveAndQuit = useDungeonStore((s) => s.saveAndQuit)
   const move = useDungeonStore((s) => s.move)
   const lastEvents = useDungeonStore((s) => s.lastEvents)
   const clearEvents = useDungeonStore((s) => s.clearEvents)
@@ -25,7 +26,7 @@ export function DungeonScreen() {
 
   return (
     <div className="flex flex-col h-dvh relative">
-      <DungeonHUD floorNumber={dungeon.floorNumber} onReturnToTown={warpToTown} />
+      <DungeonHUD floorNumber={dungeon.floorNumber} onReturnToTown={warpToTown} onSaveAndQuit={saveAndQuit} />
       <DungeonViewport floor={floor} dungeon={dungeon} />
       <EncounterGauge gauge={dungeon.encounterGauge} />
       <EventNotification events={lastEvents} onDismiss={clearEvents} />
