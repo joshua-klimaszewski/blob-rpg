@@ -1,1 +1,1 @@
-export type GameScreen = 'town' | 'dungeon' | 'combat'
+export type GameScreen = 'town' | 'dungeon' | 'combat' | 'character' | 'party-formation'

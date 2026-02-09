@@ -19,7 +19,7 @@ export const ENEMY_SLIME: EnemyDefinition = {
   },
   maxHp: 30,
   maxTp: 10,
-  skills: [], // MVP: No skills yet
+  skills: ['slime-acid-splash', 'slime-sticky-slap'],
   aiPattern: 'aggressive',
   dropTable: {
     materials: [],

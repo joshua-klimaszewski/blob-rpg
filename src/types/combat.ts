@@ -124,6 +124,14 @@ export interface ResistanceState {
 // Combat Entities
 // ============================================================================
 
+/** Temporary buff applied during combat */
+export interface BuffState {
+  skillId: string;
+  buffStat: keyof EntityStats;
+  amount: number;
+  turnsRemaining: number;
+}
+
 /** A party member or enemy in combat */
 export interface CombatEntity {
   id: string;
@@ -154,6 +162,12 @@ export interface CombatEntity {
 
   /** Is this a party member? (false = enemy) */
   isParty: boolean;
+
+  /** Skill IDs available in combat */
+  skills: string[];
+
+  /** Active temporary buffs */
+  buffs: BuffState[];
 }
 
 // ============================================================================
@@ -406,17 +420,23 @@ export interface InitialEnemyPlacement {
   position: GridPosition;
 }
 
-/** Party member state (simplified for MVP - full in Phase 4) */
+/** Party member state */
 export interface PartyMemberState {
   id: string;
   name: string;
   classId: string;
+  /** Effective stats (base + equipment bonuses) */
   stats: EntityStats;
+  /** Raw base stats before equipment (class base + level growth) */
+  baseStats: EntityStats;
   maxHp: number;
   hp: number;
   maxTp: number;
   tp: number;
   level: number;
+  xp: number;
+  skillPoints: number;
+  learnedSkills: string[];
   equipment: {
     weapon: string | null;
     armor: string | null;

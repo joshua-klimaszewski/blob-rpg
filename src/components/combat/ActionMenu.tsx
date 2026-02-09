@@ -1,13 +1,15 @@
 import type { GridPosition } from '../../types/combat';
 
-type SelectedAction = 'attack' | null;
+export type SelectedAction = 'attack' | 'skill-targeting' | null;
 
 interface ActionMenuProps {
   isPlayerTurn: boolean;
   canFlee: boolean;
+  hasSkills: boolean;
   selectedAction: SelectedAction;
   selectedTile: GridPosition | null;
   onAttack: () => void;
+  onSkills: () => void;
   onDefend: () => void;
   onFlee: () => void;
   onCancel: () => void;
@@ -16,9 +18,11 @@ interface ActionMenuProps {
 export function ActionMenu({
   isPlayerTurn,
   canFlee,
+  hasSkills,
   selectedAction,
   selectedTile,
   onAttack,
+  onSkills,
   onDefend,
   onFlee,
   onCancel,
@@ -31,12 +35,13 @@ export function ActionMenu({
     );
   }
 
-  // Attack mode: waiting for target selection
-  if (selectedAction === 'attack') {
+  // Attack or skill targeting mode: waiting for target selection
+  if (selectedAction === 'attack' || selectedAction === 'skill-targeting') {
+    const label = selectedAction === 'attack' ? 'Attack' : 'Use Skill';
     return (
       <div className="px-4 py-3 border-t-2 border-ink bg-paper">
         <div className="text-center text-sm mb-2">
-          {selectedTile ? 'Tap Attack to confirm' : 'Select a target'}
+          {selectedTile ? `Tap ${label} to confirm` : 'Select a target'}
         </div>
         <div className="flex gap-2 justify-center max-w-xs mx-auto">
           <button
@@ -47,7 +52,7 @@ export function ActionMenu({
             disabled={!selectedTile}
             onClick={onAttack}
           >
-            Attack
+            {label}
           </button>
           <button
             type="button"
@@ -71,6 +76,16 @@ export function ActionMenu({
           onClick={onAttack}
         >
           Attack
+        </button>
+        <button
+          type="button"
+          className={`flex-1 min-h-touch border-2 font-bold text-sm
+            ${hasSkills ? 'border-ink active:bg-ink active:text-paper' : 'border-gray-300 text-gray-400'}
+          `}
+          disabled={!hasSkills}
+          onClick={onSkills}
+        >
+          Skills
         </button>
         <button
           type="button"

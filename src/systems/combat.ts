@@ -14,26 +14,34 @@ import type {
   BindType,
   CombatEventUnion,
   DamageEvent,
+  HealEvent,
   DisplacementDirection,
   DisplacementEffect,
   HazardType,
   DisplacementEvent,
   HazardTriggeredEvent,
+  HazardPlacedEvent,
   PoisonData,
   BindApplication,
+  BindAppliedEvent,
   AilmentType,
   AilmentData,
+  AilmentAppliedEvent,
   TurnSkipEvent,
   EncounterData,
   TurnEntry,
   Action,
   AttackAction,
+  SkillAction,
+  BuffState,
   VictoryEvent,
   DefeatEvent,
   FleeSuccessEvent,
   FleeFailedEvent,
   CombatRewards,
 } from '../types/combat';
+
+import type { SkillDefinition, SkillEffect } from '../types/character';
 
 // ============================================================================
 // Random Number Generator (Injectable for Testing)
@@ -327,21 +335,28 @@ export interface DamageResult {
  * Calculate damage dealt from attacker to defender
  *
  * Formula:
- * - baseDmg = attacker.str * multiplier - defender.vit / 2
+ * - Physical (stat='str'): baseDmg = attacker.str * multiplier - defender.vit / 2
+ * - Magical (stat='int'): baseDmg = attacker.int * multiplier - defender.wis / 2
  * - Variance: 0.9-1.1 via RNG
  * - Crit: rng() < (attacker.luc / 100) → dmg * 1.5
- * - Arm bind on attacker → dmg * 0.5
+ * - Arm bind on attacker → dmg * 0.5 (physical only)
+ * - Head bind on attacker → dmg * 0.5 (magical only)
  * - Combo multiplier → dmg * (1 + comboCounter * 0.1)
+ * - Defend → dmg * 0.5
  */
 export function calculateDamage(
   attacker: CombatEntity,
   defender: CombatEntity,
   multiplier: number,
   comboCounter: number,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  stat: 'str' | 'int' = 'str',
+  isDefending: boolean = false
 ): DamageResult {
-  // Base damage calculation
-  const baseDmg = Math.max(1, attacker.stats.str * multiplier - defender.stats.vit / 2);
+  // Base damage calculation (physical vs magical)
+  const atkStat = stat === 'str' ? attacker.stats.str : attacker.stats.int;
+  const defStat = stat === 'str' ? defender.stats.vit : defender.stats.wis;
+  const baseDmg = Math.max(1, atkStat * multiplier - defStat / 2);
 
   // Variance (0.9 to 1.1)
   const variance = 0.9 + rng() * 0.2;
@@ -354,14 +369,22 @@ export function calculateDamage(
     damage *= 1.5;
   }
 
-  // Arm bind penalty on attacker
-  if (isArmBound(attacker)) {
+  // Bind penalty on attacker (arm for physical, head for magical)
+  if (stat === 'str' && isArmBound(attacker)) {
+    damage *= 0.5;
+  }
+  if (stat === 'int' && isHeadBound(attacker)) {
     damage *= 0.5;
   }
 
   // Combo multiplier
   const comboMultiplier = 1 + comboCounter * 0.1;
   damage *= comboMultiplier;
+
+  // Defend multiplier
+  if (isDefending) {
+    damage *= 0.5;
+  }
 
   // Round and clamp to minimum 1
   damage = Math.max(1, Math.floor(damage));
@@ -433,8 +456,12 @@ export function executeAttack(
     const defender = findEntity(newState, targetId);
     if (!defender || !isAlive(defender)) continue;
 
+    // Check if defender is defending
+    const defenderTurnEntry = newState.turnOrder.find((e) => e.entityId === targetId);
+    const defenderIsDefending = defenderTurnEntry?.isDefending ?? false;
+
     // Calculate damage (MVP: multiplier = 1.0 for basic attack)
-    const result = calculateDamage(attacker, defender, 1.0, newState.comboCounter, rng);
+    const result = calculateDamage(attacker, defender, 1.0, newState.comboCounter, rng, 'str', defenderIsDefending);
 
     // Apply damage
     const damagedEntity = applyDamage(defender, result.damage);
@@ -959,7 +986,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     maxHp: member.maxHp,
     tp: member.tp,
     maxTp: member.maxTp,
-    stats: member.stats,
+    stats: { ...member.stats },
     position: null, // Party members not on grid
     binds: { head: 0, arm: 0, leg: 0 },
     ailments: {
@@ -978,6 +1005,8 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       blind: 0,
     },
     isParty: true,
+    skills: member.learnedSkills,
+    buffs: [],
   }));
 
   // Create enemy entities and place on grid
@@ -992,7 +1021,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       maxHp: placement.definition.maxHp,
       tp: placement.definition.maxTp,
       maxTp: placement.definition.maxTp,
-      stats: placement.definition.stats,
+      stats: { ...placement.definition.stats },
       position: placement.position,
       binds: { head: 0, arm: 0, leg: 0 },
       ailments: {
@@ -1011,6 +1040,8 @@ export function initializeCombat(encounter: EncounterData): CombatState {
         blind: 0,
       },
       isParty: false,
+      skills: placement.definition.skills,
+      buffs: [],
     };
 
     enemies.push(enemy);
@@ -1140,7 +1171,8 @@ export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionRe
 export function executeAction(
   state: CombatState,
   action: Action,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  skillLookup?: (id: string) => SkillDefinition
 ): ActionResult {
   // Validate actor is alive
   const actor = findEntity(state, action.actorId);
@@ -1168,7 +1200,12 @@ export function executeAction(
       break;
     }
 
-    case 'skill':
+    case 'skill': {
+      const skillAction = action as SkillAction;
+      result = executeSkillAction(state, action.actorId, skillAction.skillId, skillAction.targetTile, rng, skillLookup);
+      break;
+    }
+
     case 'item':
       // MVP: Not implemented yet
       return { state, events: [] };
@@ -1214,20 +1251,50 @@ export function executeAction(
 }
 
 /**
- * Execute an enemy's turn (MVP: basic attack on random alive party member)
+ * Execute an enemy's turn.
+ * 60% basic attack, 40% random available skill.
  * Party members aren't on the grid, so enemies attack them directly.
  */
 export function executeEnemyTurn(
   state: CombatState,
   actorId: string,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  skillLookup?: (id: string) => SkillDefinition
 ): ActionResult {
   const actor = findEntity(state, actorId);
   if (!actor || !isAlive(actor) || actor.isParty) {
     return { state, events: [] };
   }
 
-  // Pick random alive party member
+  // Try to use a skill (40% chance if skills available)
+  if (skillLookup && actor.skills.length > 0 && rng() < 0.4) {
+    const usableSkills = actor.skills
+      .map((id) => skillLookup(id))
+      .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
+      .filter((s) => canUseSkill(actor, s).canUse);
+
+    if (usableSkills.length > 0) {
+      const skill = usableSkills[Math.floor(rng() * usableSkills.length)];
+
+      // Pick a target tile — for enemy skills targeting tiles, pick a random
+      // occupied tile or just [0,0] for party-targeting skills
+      const targetTile: GridPosition = actor.position ?? [1, 1];
+
+      const skillResult = executeSkillAction(state, actorId, skill.id, targetTile, rng, skillLookup);
+
+      // Mark actor as having acted
+      const newTurnOrder = skillResult.state.turnOrder.map((entry) =>
+        entry.entityId === actorId ? { ...entry, hasActed: true } : entry
+      );
+
+      return {
+        state: { ...skillResult.state, turnOrder: newTurnOrder },
+        events: skillResult.events,
+      };
+    }
+  }
+
+  // Basic attack fallback
   const aliveParty = getAliveParty(state);
   if (aliveParty.length === 0) {
     return { state, events: [] };
@@ -1236,8 +1303,12 @@ export function executeEnemyTurn(
   const targetIndex = Math.floor(rng() * aliveParty.length);
   const target = aliveParty[targetIndex];
 
+  // Check if defender is defending
+  const targetTurnEntry = state.turnOrder.find((e) => e.entityId === target.id);
+  const targetIsDefending = targetTurnEntry?.isDefending ?? false;
+
   // Calculate damage (multiplier 1.0 for basic attack)
-  const result = calculateDamage(actor, target, 1.0, 0, rng);
+  const result = calculateDamage(actor, target, 1.0, 0, rng, 'str', targetIsDefending);
 
   // Apply damage
   const damagedTarget = applyDamage(target, result.damage);
@@ -1287,6 +1358,563 @@ export function executeEnemyTurn(
   }
 
   return { state: newState, events };
+}
+
+// ============================================================================
+// Skill Execution Engine
+// ============================================================================
+
+/**
+ * Check if an entity can use a skill.
+ * Validates: alive, enough TP, not blocked by binds.
+ */
+export function canUseSkill(
+  entity: CombatEntity,
+  skill: SkillDefinition
+): { canUse: boolean; reason?: string } {
+  if (!isAlive(entity)) {
+    return { canUse: false, reason: 'Dead' };
+  }
+  if (entity.tp < skill.tpCost) {
+    return { canUse: false, reason: 'Not enough TP' };
+  }
+  if (skill.bodyPartRequired === 'arm' && isArmBound(entity)) {
+    return { canUse: false, reason: 'Arm is bound' };
+  }
+  if (skill.bodyPartRequired === 'head' && isHeadBound(entity)) {
+    return { canUse: false, reason: 'Head is bound' };
+  }
+  return { canUse: true };
+}
+
+/**
+ * Resolve target tiles from a skill's target type.
+ * Expands single-tile → adjacent-tiles, all-enemies, etc.
+ */
+export function resolveTargetTiles(
+  state: CombatState,
+  targetTile: GridPosition,
+  targetType: SkillDefinition['targetType']
+): GridPosition[] {
+  switch (targetType) {
+    case 'single-tile':
+      return [targetTile];
+
+    case 'adjacent-tiles': {
+      const tiles: GridPosition[] = [targetTile];
+      const [row, col] = targetTile;
+      const adjacents: GridPosition[] = [
+        [row - 1, col],
+        [row + 1, col],
+        [row, col - 1],
+        [row, col + 1],
+      ];
+      for (const pos of adjacents) {
+        if (isValidPosition(pos)) {
+          tiles.push(pos);
+        }
+      }
+      return tiles;
+    }
+
+    case 'all-enemies': {
+      const tiles: GridPosition[] = [];
+      for (const enemy of getAliveEnemies(state)) {
+        if (enemy.position) {
+          // Avoid duplicate tiles
+          if (!tiles.some(([r, c]) => r === enemy.position![0] && c === enemy.position![1])) {
+            tiles.push(enemy.position);
+          }
+        }
+      }
+      return tiles;
+    }
+
+    case 'single-ally':
+    case 'all-allies':
+    case 'self':
+      // These don't use grid tiles, handled separately
+      return [];
+  }
+}
+
+/**
+ * Get the number of active binds on an entity.
+ */
+export function countActiveBinds(entity: CombatEntity): number {
+  let count = 0;
+  if (entity.binds.head > 0) count++;
+  if (entity.binds.arm > 0) count++;
+  if (entity.binds.leg > 0) count++;
+  return count;
+}
+
+/**
+ * Check if an entity has any active ailment.
+ */
+export function hasAnyAilment(entity: CombatEntity): boolean {
+  return !!(
+    entity.ailments.poison ||
+    entity.ailments.paralyze ||
+    entity.ailments.sleep ||
+    entity.ailments.blind
+  );
+}
+
+/**
+ * Evaluate a conditional skill's predicate against a target.
+ */
+export function evaluateCondition(
+  condition: import('../types/character').SkillCondition,
+  target: CombatEntity,
+  state: CombatState
+): boolean {
+  const cond = condition;
+  switch (cond.type) {
+    case 'has-any-bind':
+      return countActiveBinds(target) > 0;
+    case 'has-all-binds':
+      return target.binds.head > 0 && target.binds.arm > 0 && target.binds.leg > 0;
+    case 'has-leg-bind':
+      return target.binds.leg > 0;
+    case 'has-ailment':
+      return hasAnyAilment(target);
+    case 'on-hazard': {
+      if (!target.position) return false;
+      const tile = getTile(state.grid, target.position);
+      return tile?.hazard != null;
+    }
+    case 'below-hp-percent': {
+      const threshold = cond.threshold ?? 25;
+      return (target.hp / target.maxHp) * 100 < threshold;
+    }
+  }
+}
+
+/**
+ * Check if defender is currently defending (from turn order).
+ */
+function isEntityDefending(state: CombatState, entityId: string): boolean {
+  const entry = state.turnOrder.find((e) => e.entityId === entityId);
+  return entry?.isDefending ?? false;
+}
+
+/**
+ * Apply a single heal to an entity.
+ */
+function applyHeal(entity: CombatEntity, amount: number): CombatEntity {
+  return {
+    ...entity,
+    hp: Math.min(entity.maxHp, entity.hp + amount),
+  };
+}
+
+/**
+ * Process a single skill effect on the state.
+ * Returns updated state and events.
+ */
+function processSkillEffect(
+  state: CombatState,
+  actor: CombatEntity,
+  effect: SkillEffect,
+  targetTiles: GridPosition[],
+  targetAllyId: string | null,
+  rng: RNG
+): ActionResult {
+  const events: CombatEventUnion[] = [];
+  let newState = state;
+
+  switch (effect.type) {
+    case 'damage': {
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const target = findEntity(newState, id);
+          if (!target || !isAlive(target)) continue;
+          const defending = isEntityDefending(newState, id);
+          const result = calculateDamage(actor, target, effect.multiplier, newState.comboCounter, rng, effect.stat, defending);
+          const damaged = applyDamage(target, result.damage);
+          newState = updateEntity(newState, id, damaged);
+          newState = { ...newState, comboCounter: newState.comboCounter + 1 };
+          events.push({
+            type: 'damage', timestamp: Date.now(), targetId: id,
+            damage: result.damage, isCrit: result.isCrit, killed: result.killed,
+          });
+        }
+      }
+      break;
+    }
+
+    case 'displacement': {
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const displacementResult = displaceEntity(newState, id, {
+            direction: effect.direction as DisplacementDirection,
+            distance: effect.distance,
+          });
+          newState = displacementResult.state;
+          events.push(...displacementResult.events);
+        }
+      }
+      break;
+    }
+
+    case 'bind': {
+      // For ally targeting (cure binds), duration 0 means remove
+      if (targetAllyId && effect.duration === 0) {
+        const ally = findEntity(newState, targetAllyId);
+        if (ally) {
+          const cured: CombatEntity = {
+            ...ally,
+            binds: { ...ally.binds, [effect.bindType]: 0 },
+          };
+          newState = updateEntity(newState, targetAllyId, cured);
+        }
+        break;
+      }
+
+      // Enemy targeting: apply bind
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const target = findEntity(newState, id);
+          if (!target || !isAlive(target)) continue;
+          const bindApp: BindApplication = {
+            type: effect.bindType,
+            baseDuration: effect.duration,
+            baseChance: effect.chance,
+          };
+          const bindResult = applyBind(target, bindApp, rng);
+          newState = updateEntity(newState, id, bindResult.entity);
+          events.push({
+            type: 'bind-applied', timestamp: Date.now(), targetId: id,
+            bindType: effect.bindType, duration: bindResult.finalDuration,
+            resisted: !bindResult.applied,
+          } as BindAppliedEvent);
+        }
+      }
+      break;
+    }
+
+    case 'ailment': {
+      // For ally targeting (purify), duration 0 means remove
+      if (targetAllyId && effect.duration === 0) {
+        const ally = findEntity(newState, targetAllyId);
+        if (ally) {
+          const cured: CombatEntity = {
+            ...ally,
+            ailments: {
+              ...ally.ailments,
+              poison: null,
+              paralyze: null,
+              sleep: null,
+              blind: null,
+            },
+          };
+          newState = updateEntity(newState, targetAllyId, cured);
+        }
+        break;
+      }
+
+      // Enemy targeting: apply ailment
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const target = findEntity(newState, id);
+          if (!target || !isAlive(target)) continue;
+
+          let ailmentData: AilmentData;
+          switch (effect.ailmentType) {
+            case 'poison':
+              ailmentData = { type: 'poison', damagePerTurn: effect.damagePerTurn ?? 3, turnsRemaining: effect.duration };
+              break;
+            case 'paralyze':
+              ailmentData = { type: 'paralyze', skipChance: 50, turnsRemaining: effect.duration };
+              break;
+            case 'sleep':
+              ailmentData = { type: 'sleep', turnsRemaining: effect.duration };
+              break;
+            case 'blind':
+              ailmentData = { type: 'blind', accuracyPenalty: 30, turnsRemaining: effect.duration };
+              break;
+          }
+          const ailmentResult = applyAilment(target, effect.ailmentType, ailmentData, effect.chance, rng);
+          newState = updateEntity(newState, id, ailmentResult.entity);
+          events.push({
+            type: 'ailment-applied', timestamp: Date.now(), targetId: id,
+            ailment: effect.ailmentType, resisted: !ailmentResult.applied,
+          } as AilmentAppliedEvent);
+        }
+      }
+      break;
+    }
+
+    case 'hazard': {
+      for (const tile of targetTiles) {
+        newState = {
+          ...newState,
+          grid: placeHazard(newState.grid, tile, effect.hazardType),
+        };
+        events.push({
+          type: 'hazard-placed', timestamp: Date.now(),
+          hazard: effect.hazardType, position: tile,
+        } as HazardPlacedEvent);
+      }
+      break;
+    }
+
+    case 'heal': {
+      if (targetAllyId) {
+        // Single ally heal
+        const ally = findEntity(newState, targetAllyId);
+        if (ally && isAlive(ally)) {
+          const amount = Math.floor(actor.stats.wis * effect.multiplier);
+          const healed = applyHeal(ally, amount);
+          newState = updateEntity(newState, targetAllyId, healed);
+          events.push({
+            type: 'heal', timestamp: Date.now(), targetId: targetAllyId, amount,
+          } as HealEvent);
+        }
+      } else {
+        // All allies heal
+        for (const member of getAliveParty(newState)) {
+          const amount = Math.floor(actor.stats.wis * effect.multiplier);
+          const healed = applyHeal(member, amount);
+          newState = updateEntity(newState, member.id, healed);
+          events.push({
+            type: 'heal', timestamp: Date.now(), targetId: member.id, amount,
+          } as HealEvent);
+        }
+      }
+      break;
+    }
+
+    case 'conditional-damage': {
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const target = findEntity(newState, id);
+          if (!target || !isAlive(target)) continue;
+
+          let conditionMet = evaluateCondition(effect.condition, target, newState);
+
+          // For ally healing conditions (below-hp-percent on revitalize)
+          if (effect.condition.type === 'below-hp-percent' && targetAllyId) {
+            const ally = findEntity(newState, targetAllyId);
+            if (!ally) continue;
+            conditionMet = (ally.hp / ally.maxHp) * 100 < (effect.condition.threshold ?? 25);
+            if (conditionMet) {
+              const amount = Math.floor(actor.stats.wis * effect.multiplier);
+              const healed = applyHeal(ally, amount);
+              newState = updateEntity(newState, targetAllyId, healed);
+              events.push({
+                type: 'heal', timestamp: Date.now(), targetId: targetAllyId, amount,
+              } as HealEvent);
+            }
+            break;
+          }
+
+          if (!conditionMet) {
+            // Fall back to 1.0x damage if condition not met
+            const defending = isEntityDefending(newState, id);
+            const result = calculateDamage(actor, target, 1.0, newState.comboCounter, rng, effect.stat, defending);
+            const damaged = applyDamage(target, result.damage);
+            newState = updateEntity(newState, id, damaged);
+            newState = { ...newState, comboCounter: newState.comboCounter + 1 };
+            events.push({
+              type: 'damage', timestamp: Date.now(), targetId: id,
+              damage: result.damage, isCrit: result.isCrit, killed: result.killed,
+            });
+          } else {
+            let mult = effect.multiplier;
+            if (effect.perBindMultiplier) {
+              mult = effect.multiplier * countActiveBinds(target);
+            }
+            const defending = isEntityDefending(newState, id);
+            const result = calculateDamage(actor, target, mult, newState.comboCounter, rng, effect.stat, defending);
+            const damaged = applyDamage(target, result.damage);
+            newState = updateEntity(newState, id, damaged);
+            newState = { ...newState, comboCounter: newState.comboCounter + 1 };
+            events.push({
+              type: 'damage', timestamp: Date.now(), targetId: id,
+              damage: result.damage, isCrit: result.isCrit, killed: result.killed,
+            });
+          }
+        }
+      }
+      break;
+    }
+
+    case 'multi-hit': {
+      for (const tile of targetTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          for (let hit = 0; hit < effect.hits; hit++) {
+            const target = findEntity(newState, id);
+            if (!target || !isAlive(target)) break;
+            const defending = isEntityDefending(newState, id);
+            const result = calculateDamage(actor, target, effect.multiplierPerHit, newState.comboCounter, rng, effect.stat, defending);
+            const damaged = applyDamage(target, result.damage);
+            newState = updateEntity(newState, id, damaged);
+            newState = { ...newState, comboCounter: newState.comboCounter + 1 };
+            events.push({
+              type: 'damage', timestamp: Date.now(), targetId: id,
+              damage: result.damage, isCrit: result.isCrit, killed: result.killed,
+            });
+          }
+        }
+      }
+      break;
+    }
+
+    case 'aoe-splash': {
+      // Target tile + orthogonal adjacent tiles
+      const allTiles = resolveTargetTiles(state, targetTiles[0] ?? [1, 1], 'adjacent-tiles');
+      for (const tile of allTiles) {
+        const entityIds = getEntitiesAtTile(newState.grid, tile);
+        for (const id of entityIds) {
+          const target = findEntity(newState, id);
+          if (!target || !isAlive(target)) continue;
+          const defending = isEntityDefending(newState, id);
+          const result = calculateDamage(actor, target, effect.multiplier, newState.comboCounter, rng, effect.stat, defending);
+          const damaged = applyDamage(target, result.damage);
+          newState = updateEntity(newState, id, damaged);
+          newState = { ...newState, comboCounter: newState.comboCounter + 1 };
+          events.push({
+            type: 'damage', timestamp: Date.now(), targetId: id,
+            damage: result.damage, isCrit: result.isCrit, killed: result.killed,
+          });
+        }
+      }
+      break;
+    }
+
+    case 'self-buff': {
+      if (effect.duration > 0) {
+        const buff: BuffState = {
+          skillId: 'skill-buff',
+          buffStat: effect.buffStat,
+          amount: effect.amount,
+          turnsRemaining: effect.duration,
+        };
+        const buffedActor: CombatEntity = {
+          ...actor,
+          buffs: [...actor.buffs, buff],
+          stats: {
+            ...actor.stats,
+            [effect.buffStat]: actor.stats[effect.buffStat] + effect.amount,
+          },
+        };
+        newState = updateEntity(newState, actor.id, buffedActor);
+      }
+      break;
+    }
+  }
+
+  return { state: newState, events };
+}
+
+/**
+ * Execute a skill action. Main entry point for skill usage.
+ *
+ * Flow:
+ * 1. Validate: alive, enough TP, not blocked by binds
+ * 2. Deduct TP
+ * 3. Resolve target tiles from skill.targetType
+ * 4. Process each effect in skill.effects order
+ * 5. Return new state + events
+ */
+export function executeSkillAction(
+  state: CombatState,
+  actorId: string,
+  skillId: string,
+  targetTile: GridPosition,
+  rng: RNG = defaultRNG,
+  skillLookup?: (id: string) => SkillDefinition
+): ActionResult {
+  const actor = findEntity(state, actorId);
+  if (!actor || !isAlive(actor)) {
+    return { state, events: [] };
+  }
+
+  // Look up skill (use provided lookup or lazy import)
+  let skill: SkillDefinition;
+  if (skillLookup) {
+    skill = skillLookup(skillId);
+  } else {
+    // Dynamic import alternative: caller should provide lookup
+    // For now, this is a fallback that allows test injection
+    return { state, events: [] };
+  }
+
+  // Validate skill usage
+  const check = canUseSkill(actor, skill);
+  if (!check.canUse) {
+    return { state, events: [] };
+  }
+
+  // Deduct TP
+  const actorWithTpDeducted: CombatEntity = {
+    ...actor,
+    tp: actor.tp - skill.tpCost,
+  };
+  let newState = updateEntity(state, actorId, actorWithTpDeducted);
+
+  // Resolve target tiles
+  const targetTiles = resolveTargetTiles(newState, targetTile, skill.targetType);
+
+  // Determine ally target for healing/cure skills
+  // targetTile is repurposed: for ally-targeting skills, targetTile[0] is used as an index
+  // into the party array. But we'll use the actorId's party context instead.
+  // For single-ally, the targetTile is passed but we use a separate mechanism.
+  // Actually, for ally targeting we encode the target member's index in the targetTile.
+  let targetAllyId: string | null = null;
+  if (skill.targetType === 'single-ally') {
+    // Use targetTile[0] as party member index
+    const idx = targetTile[0];
+    const ally = newState.party[idx];
+    if (ally) {
+      targetAllyId = ally.id;
+    }
+  }
+
+  const allEvents: CombatEventUnion[] = [];
+
+  // Get the current actor with updated TP
+  const currentActor = findEntity(newState, actorId)!;
+
+  // Process each effect in order
+  for (const effect of skill.effects) {
+    const effectResult = processSkillEffect(
+      newState, currentActor, effect, targetTiles, targetAllyId, rng
+    );
+    newState = effectResult.state;
+    allEvents.push(...effectResult.events);
+  }
+
+  return { state: newState, events: allEvents };
+}
+
+/**
+ * Tick buff durations at end of turn.
+ * Decrements buff counters, removes expired, reverts stat bonuses.
+ */
+export function tickBuffs(entity: CombatEntity): CombatEntity {
+  const newBuffs: BuffState[] = [];
+  let stats = { ...entity.stats };
+
+  for (const buff of entity.buffs) {
+    const remaining = buff.turnsRemaining - 1;
+    if (remaining > 0) {
+      newBuffs.push({ ...buff, turnsRemaining: remaining });
+    } else {
+      // Revert stat bonus
+      stats = { ...stats, [buff.buffStat]: stats[buff.buffStat] - buff.amount };
+    }
+  }
+
+  return { ...entity, buffs: newBuffs, stats };
 }
 
 /**
