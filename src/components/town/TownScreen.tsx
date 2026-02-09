@@ -43,10 +43,10 @@ export function TownScreen() {
         </button>
 
         <button
-          disabled
-          className="min-h-touch border-2 border-gray-300 px-4 py-3 text-gray-400"
+          onClick={() => setScreen('inn')}
+          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
-          Inn (coming soon)
+          Inn
         </button>
 
         <button
