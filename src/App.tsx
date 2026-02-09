@@ -12,6 +12,7 @@ import { GuildNameScreen } from './components/ui/GuildNameScreen'
 import { LoadGameScreen } from './components/ui/LoadGameScreen'
 import { SaveGameScreen } from './components/town/SaveGameScreen'
 import { HowToPlayScreen } from './components/help/HowToPlayScreen'
+import { InventoryScreen } from './components/town/InventoryScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
 
 const screens = {
@@ -28,6 +29,7 @@ const screens = {
   'load-game': LoadGameScreen,
   'save-game': SaveGameScreen,
   'how-to-play': HowToPlayScreen,
+  inventory: InventoryScreen,
 } as const
 
 export function App() {

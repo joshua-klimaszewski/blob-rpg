@@ -101,6 +101,13 @@ export function TownScreen() {
         </button>
 
         <button
+          onClick={() => setScreen('inventory')}
+          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
+        >
+          Inventory
+        </button>
+
+        <button
           onClick={() => setScreen('character')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
