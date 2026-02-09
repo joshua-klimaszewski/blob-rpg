@@ -30,7 +30,7 @@ export function loadGameState(save: SaveData): void {
   });
 
   useQuestStore.setState({
-    activeQuests: save.quests.activeQuests,
+    activeQuests: save.quests?.activeQuests ?? [],
   });
 
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
@@ -55,7 +55,7 @@ export function loadSuspendState(save: SuspendSaveData): void {
   });
 
   useQuestStore.setState({
-    activeQuests: save.quests.activeQuests,
+    activeQuests: save.quests?.activeQuests ?? [],
   });
 
   useGuildStore.getState().setActiveGuild(save.guildId, save.guildName);
