@@ -324,6 +324,47 @@ export function advanceTurn(state: CombatState): CombatState {
   };
 }
 
+/**
+ * Advance to the next ALIVE actor in turn order.
+ * Skips dead actors atomically (no cascading setTimeout chains).
+ * Increments round if we wrap past index 0.
+ */
+export function advanceToNextAlive(state: CombatState): CombatState {
+  const len = state.turnOrder.length;
+  if (len === 0) return state;
+
+  let idx = (state.currentActorIndex + 1) % len;
+  let wrapped = idx <= state.currentActorIndex;
+  let checks = 0;
+
+  // Walk forward until we find an alive actor or exhaust the list
+  while (checks < len) {
+    const entry = state.turnOrder[idx];
+    const entity = findEntity(state, entry.entityId);
+    if (entity && isAlive(entity)) break;
+
+    idx = (idx + 1) % len;
+    if (idx === 0) wrapped = true;
+    checks++;
+  }
+
+  // If all actors are dead (shouldn't happen — victory/defeat checks first),
+  // fall back to simple advance so we don't infinite-loop
+  if (checks >= len) {
+    return advanceTurn(state);
+  }
+
+  return {
+    ...state,
+    currentActorIndex: idx,
+    round: wrapped ? state.round + 1 : state.round,
+    turnOrder: state.turnOrder.map((entry, i) => ({
+      ...entry,
+      hasActed: i === idx ? false : entry.hasActed,
+    })),
+  };
+}
+
 // ============================================================================
 // Damage Calculation
 // ============================================================================
