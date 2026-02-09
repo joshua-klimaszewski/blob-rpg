@@ -42,6 +42,11 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [x] Shortcut/checkpoint mechanic (one-way paths, warp to town) (2026-02-08)
 - [x] First test floor (handcrafted, ~15x15 grid with corridors + rooms) (2026-02-08)
 
+**Phase 2b — Dungeon UI Polish:**
+- [x] Differentiate walls from fog of war — visible walls render as dark gray (`bg-gray-800`) with border, explored walls as medium gray (`bg-gray-700`), fog stays pure black (2026-02-08)
+- [x] Zoom out viewport — show ~9 tiles across shorter axis (was 7), min cell size 32px (was 40px) for better dungeon overview (2026-02-08)
+- [x] Update minimap to reflect wall visibility states (visible walls dark gray, explored walls medium gray) (2026-02-08)
+
 ### Phase 3: Combat System (3x3 Grid + Bind/Shutdown)
 
 > Full combat with displacement combos and bind system.
@@ -832,6 +837,36 @@ These systems were researched but intentionally excluded from MVP scope:
 - `src/components/dungeon/Minimap.tsx` — canvas minimap with collapse/expand
 
 **Next sprint:** Phase 4 — Character & Class System (6 blob classes, skill trees, equipment).
+
+### Sprint 09 — Phase 2b: Dungeon UI Polish (2026-02-08)
+
+**Goal:** Fix wall/fog indistinguishability and adjust dungeon viewport zoom for better exploration experience.
+
+**Tasks:**
+- [x] Differentiate visible walls from fog of war in DungeonTile (dark gray + border vs pure black) (2026-02-08)
+- [x] Add explored wall rendering state (medium gray, distinct from both visible walls and explored floors) (2026-02-08)
+- [x] Zoom out viewport from 7 to 9 tiles per short axis, reduce min cell size from 40px to 32px (2026-02-08)
+- [x] Update Minimap canvas to render visible/explored walls differently from fog (2026-02-08)
+- [x] Visual testing with agent-browser (verified wall differentiation, zoom level, FOE visibility) (2026-02-08)
+
+**Test Coverage:**
+- 232 tests still passing (no regressions)
+- Build verified clean
+
+**Files Modified:**
+- `src/components/dungeon/DungeonTile.tsx` — 4 visibility×type render states (was 3)
+- `src/components/dungeon/DungeonViewport.tsx` — zoom constants (9 tiles, 32px min)
+- `src/components/dungeon/Minimap.tsx` — wall visibility rendering in canvas
+- `plans/plan.md` — Phase 2b tasks + sprint log
+
+**Visual Changes:**
+- Hidden (fog of war): pure black (`bg-ink`) — unchanged
+- Visible wall: dark gray (`bg-gray-800`, border `gray-700`) — NEW, was indistinguishable from fog
+- Explored wall: medium gray (`bg-gray-700`, border `gray-600`) — NEW
+- Visible floor: white (`bg-paper`, border `gray-200`) — unchanged
+- Explored floor: light gray (`bg-gray-300`, border `gray-400`) — unchanged
+
+**PR:** feat/dungeon-ui-polish (new branch from main)
 
 ---
 

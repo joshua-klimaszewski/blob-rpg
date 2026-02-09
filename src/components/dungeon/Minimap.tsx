@@ -42,7 +42,15 @@ export function Minimap({ floor, dungeon }: MinimapProps) {
         const py = y * pxPerTile
 
         if (tile.type === 'wall') {
-          // Walls stay black
+          // Visible/explored walls shown as dark gray to distinguish from fog
+          if (visibleSet.has(key)) {
+            ctx.fillStyle = '#262626' // gray-800
+            ctx.fillRect(px, py, pxPerTile, pxPerTile)
+          } else if (exploredSet.has(key)) {
+            ctx.fillStyle = '#404040' // gray-700
+            ctx.fillRect(px, py, pxPerTile, pxPerTile)
+          }
+          // hidden walls stay black (fog)
           continue
         }
 

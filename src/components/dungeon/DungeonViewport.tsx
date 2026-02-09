@@ -30,9 +30,9 @@ export function DungeonViewport({ floor, dungeon }: DungeonViewportProps) {
     return () => observer.disconnect()
   }, [updateSize])
 
-  // Cell size: show ~7 tiles across the shorter axis
-  const TILES_PER_SHORT_AXIS = 7
-  const MIN_CELL_SIZE = 40
+  // Cell size: show ~9 tiles across the shorter axis (zoomed out for better overview)
+  const TILES_PER_SHORT_AXIS = 9
+  const MIN_CELL_SIZE = 32
 
   const cellSize = viewportSize.width > 0 && viewportSize.height > 0
     ? Math.max(MIN_CELL_SIZE, Math.floor(Math.min(viewportSize.width, viewportSize.height) / TILES_PER_SHORT_AXIS))
