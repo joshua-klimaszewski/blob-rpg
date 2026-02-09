@@ -33,11 +33,13 @@ import { getPassiveModifiers } from '../systems/character';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
 function lookupSkill(id: string): SkillDefinition {
-  const playerSkill = getSkill(id);
-  if (playerSkill) return playerSkill;
+  try {
+    return getSkill(id);
+  } catch {
+    // Not a player skill — check enemy skills
+  }
   const enemySkill = getEnemySkill(id);
   if (enemySkill) return enemySkill;
-  // Fallback — should not happen if data is consistent
   throw new Error(`Unknown skill ID: ${id}`);
 }
 
