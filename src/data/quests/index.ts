@@ -42,6 +42,45 @@ export const QUESTS: QuestDefinition[] = [
     objective: { type: 'gather', materialId: 'slime-core', count: 2 },
     reward: { gold: 80, xp: 150 },
   },
+
+  // Floor 2 quests
+  {
+    id: 'quest-slay-fungoids',
+    name: 'Fungal Purge',
+    description: 'Defeat 5 Fungoids in the Fungal Passage.',
+    objective: { type: 'kill', enemyId: 'fungoid', count: 5 },
+    reward: { gold: 80, xp: 150 },
+  },
+  {
+    id: 'quest-gather-caps',
+    name: 'Cap Harvest',
+    description: 'Sell 4 Fungal Caps to the shop.',
+    objective: { type: 'gather', materialId: 'fungal-cap', count: 4 },
+    reward: { gold: 60, xp: 120 },
+  },
+  {
+    id: 'quest-explore-f2',
+    name: 'Into the Passage',
+    description: 'Reach the Fungal Passage, Floor 2.',
+    objective: { type: 'explore', floorId: 'verdant-depths-f2' },
+    reward: { gold: 50, xp: 100 },
+  },
+
+  // Floor 3 quests
+  {
+    id: 'quest-slay-beetles',
+    name: 'Shell Crackers',
+    description: 'Defeat 3 Crystal Beetles in the Crystal Depths.',
+    objective: { type: 'kill', enemyId: 'crystal-beetle', count: 3 },
+    reward: { gold: 120, xp: 250 },
+  },
+  {
+    id: 'quest-explore-f3',
+    name: 'Deep Descent',
+    description: 'Reach the Crystal Depths, Floor 3.',
+    objective: { type: 'explore', floorId: 'verdant-depths-f3' },
+    reward: { gold: 100, xp: 200 },
+  },
 ];
 
 const QUEST_REGISTRY: Record<string, QuestDefinition> = {};
