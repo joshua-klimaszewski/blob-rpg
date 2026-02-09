@@ -293,6 +293,19 @@ export function loadAndDeleteSuspend(guildId: string): SuspendSaveData | null {
   return migrateSaveData(JSON.parse(raw) as SuspendSaveData);
 }
 
+export function clearSuspend(guildId: string): void {
+  if (!localStorage.getItem(suspendKey(guildId))) return;
+
+  localStorage.removeItem(suspendKey(guildId));
+
+  const registry = getRegistry();
+  const guild = registry.guilds.find((g) => g.id === guildId);
+  if (guild) {
+    guild.hasSuspendSave = false;
+    saveRegistry(registry);
+  }
+}
+
 export function hasSuspendSave(guildId: string): boolean {
   return localStorage.getItem(suspendKey(guildId)) !== null;
 }

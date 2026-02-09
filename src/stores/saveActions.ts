@@ -15,7 +15,7 @@ import { useGuildStore } from './guildStore';
 import { useDungeonProgressStore } from './dungeonProgressStore';
 import { getFloor } from '../data/dungeons';
 import { getQuest } from '../data/quests';
-import { saveAutoSlot, saveSuspend } from '../systems/save';
+import { saveAutoSlot, saveSuspend, clearSuspend } from '../systems/save';
 
 /** Hydrate all stores from a regular save (loads into town) */
 export function loadGameState(save: SaveData): void {
@@ -173,6 +173,7 @@ export function autoSaveTown(): void {
 
   const data = collectGameState();
   saveAutoSlot(currentGuildId, data);
+  clearSuspend(currentGuildId);
 }
 
 /** Auto-save dungeon state as a suspend save */
