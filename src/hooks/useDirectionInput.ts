@@ -21,7 +21,9 @@ const KEY_MAP: Record<string, Direction> = {
 
 export function useDirectionInput(onDirection: (dir: Direction) => void) {
   const callbackRef = useRef(onDirection)
-  callbackRef.current = onDirection
+  useEffect(() => {
+    callbackRef.current = onDirection
+  })
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
 

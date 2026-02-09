@@ -12,6 +12,8 @@ import type {
   AilmentState,
   ResistanceState,
   TurnEntry,
+  DamageEvent,
+  DisplacementEvent,
 } from '../types/combat';
 import {
   isValidPosition,
@@ -849,7 +851,7 @@ describe('executeAttack', () => {
     expect(result.events).toHaveLength(1);
     expect(result.events[0].type).toBe('damage');
 
-    const damageEvent = result.events[0] as any;
+    const damageEvent = result.events[0] as DamageEvent;
     expect(damageEvent.targetId).toBe('enemy-1');
     expect(damageEvent.damage).toBeGreaterThan(0);
 
@@ -976,7 +978,7 @@ describe('executeAttack', () => {
 
     const result = executeAttack(state, 'party-1', [1, 1]);
 
-    const damageEvent = result.events[0] as any;
+    const damageEvent = result.events[0] as DamageEvent;
     expect(damageEvent.killed).toBe(true);
 
     const updatedEnemy = findEntity(result.state, 'enemy-1')!;
@@ -1068,7 +1070,7 @@ describe('triggerHazard', () => {
     expect(result.events).toHaveLength(1);
     expect(result.events[0].type).toBe('damage');
 
-    const damageEvent = result.events[0] as any;
+    const damageEvent = result.events[0] as DamageEvent;
     expect(damageEvent.damage).toBe(10);
   });
 
@@ -1101,7 +1103,7 @@ describe('triggerHazard', () => {
 
     expect(result.entity.hp).toBe(0);
 
-    const damageEvent = result.events[0] as any;
+    const damageEvent = result.events[0] as DamageEvent;
     expect(damageEvent.killed).toBe(true);
   });
 });
@@ -1120,7 +1122,7 @@ describe('displaceEntity', () => {
     expect(result.events).toHaveLength(1);
     expect(result.events[0].type).toBe('displacement');
 
-    const displacementEvent = result.events[0] as any;
+    const displacementEvent = result.events[0] as DisplacementEvent;
     expect(displacementEvent.from).toEqual([1, 1]);
     expect(displacementEvent.to).toEqual([2, 1]);
 
