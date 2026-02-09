@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { GameScreen } from '../types/game'
 
 interface GameState {
@@ -6,7 +7,17 @@ interface GameState {
   setScreen: (screen: GameScreen) => void
 }
 
-export const useGameStore = create<GameState>((set) => ({
-  screen: 'town',
-  setScreen: (screen) => set({ screen }),
-}))
+export const useGameStore = create<GameState>()(
+  persist(
+    (set) => ({
+      screen: 'title',
+      setScreen: (screen) => set({ screen }),
+    }),
+    {
+      name: 'blob-rpg-game',
+      partialize: (state) => ({
+        screen: state.screen,
+      }),
+    },
+  ),
+)
