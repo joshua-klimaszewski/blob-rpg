@@ -121,10 +121,31 @@ describe('Skill Registry', () => {
     }
   });
 
-  it('each skill has at least one effect', () => {
+  it('each non-passive skill has at least one effect', () => {
     for (const skills of ALL_SKILL_ARRAYS) {
       for (const skill of skills) {
-        expect(skill.effects.length).toBeGreaterThan(0);
+        if (!skill.isPassive) {
+          expect(skill.effects.length).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('each passive skill has a passiveModifier', () => {
+    for (const skills of ALL_SKILL_ARRAYS) {
+      for (const skill of skills) {
+        if (skill.isPassive) {
+          expect(skill.passiveModifier).toBeDefined();
+        }
+      }
+    }
+  });
+
+  it('each skill has a category', () => {
+    for (const skills of ALL_SKILL_ARRAYS) {
+      for (const skill of skills) {
+        expect(skill.category).toBeDefined();
+        expect(['core', 'active', 'passive', 'synergy', 'ultimate']).toContain(skill.category);
       }
     }
   });

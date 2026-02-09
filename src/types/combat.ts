@@ -5,6 +5,8 @@
  * All types are JSON-serializable for future save system compatibility.
  */
 
+import type { PassiveModifier } from './character';
+
 // ============================================================================
 // Grid & Position
 // ============================================================================
@@ -170,6 +172,9 @@ export interface CombatEntity {
 
   /** Active temporary buffs */
   buffs: BuffState[];
+
+  /** Passive modifiers from learned skills (party members only) */
+  passiveModifiers: PassiveModifier[];
 }
 
 // ============================================================================
@@ -463,4 +468,5 @@ export interface CombatRewards {
   xp: number;
   gold: number;
   materials: Array<{ id: string; quantity: number }>;
+  levelUps: Array<{ memberId: string; name: string; oldLevel: number; newLevel: number }>;
 }

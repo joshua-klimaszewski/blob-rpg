@@ -1012,6 +1012,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     isParty: true,
     skills: member.learnedSkills,
     buffs: [],
+    passiveModifiers: [],
   }));
 
   // Create enemy entities and place on grid
@@ -1048,6 +1049,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       isParty: false,
       skills: placement.definition.skills,
       buffs: [],
+      passiveModifiers: [],
     };
 
     enemies.push(enemy);
@@ -1698,9 +1700,13 @@ function processSkillEffect(
         for (const id of entityIds) {
           const target = findEntity(newState, id);
           if (!target || !isAlive(target)) continue;
+          // Apply bind-duration-bonus from actor's passives
+          const durationBonus = actor.passiveModifiers
+            .filter((m) => m.type === 'bind-duration-bonus')
+            .reduce((sum, m) => sum + m.amount, 0);
           const bindApp: BindApplication = {
             type: effect.bindType,
-            baseDuration: effect.duration,
+            baseDuration: effect.duration + durationBonus,
             baseChance: effect.chance,
           };
           const bindResult = applyBind(target, bindApp, rng);
@@ -1744,9 +1750,14 @@ function processSkillEffect(
 
           let ailmentData: AilmentData;
           switch (effect.ailmentType) {
-            case 'poison':
-              ailmentData = { type: 'poison', damagePerTurn: effect.damagePerTurn ?? 3, turnsRemaining: effect.duration };
+            case 'poison': {
+              // Apply poison-damage-bonus from actor's passives
+              const poisonBonus = actor.passiveModifiers
+                .filter((m) => m.type === 'poison-damage-bonus')
+                .reduce((sum, m) => sum + m.amount, 0);
+              ailmentData = { type: 'poison', damagePerTurn: (effect.damagePerTurn ?? 3) + poisonBonus, turnsRemaining: effect.duration };
               break;
+            }
             case 'paralyze':
               ailmentData = { type: 'paralyze', skipChance: 50, turnsRemaining: effect.duration };
               break;
@@ -2075,5 +2086,6 @@ export function calculateRewards(
     xp: totalXp,
     gold: totalGold,
     materials,
+    levelUps: [],
   };
 }

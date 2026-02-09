@@ -29,6 +29,7 @@ import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
 import type { SkillDefinition } from '../types/character';
+import { getPassiveModifiers } from '../systems/character';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
 function lookupSkill(id: string): SkillDefinition {
@@ -75,11 +76,35 @@ interface CombatStore {
 function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
   if (state.phase === 'victory') {
     const rewards = calculateRewards(state, defaultRNG, getEnemy);
-    useCombatStore.setState({ rewards });
+
+    // Snapshot pre-XP levels for level-up detection
+    const partyStore = usePartyStore.getState();
+    const preLevels = new Map<string, { level: number; name: string }>();
+    for (const member of partyStore.getActiveParty()) {
+      preLevels.set(member.id, { level: member.level, name: member.name });
+    }
 
     // Award XP and sync HP/TP to party store
-    usePartyStore.getState().awardXp(rewards.xp);
+    partyStore.awardXp(rewards.xp);
     usePartyStore.getState().syncHpTpFromCombat(state.party);
+
+    // Detect level-ups by comparing pre/post levels
+    const postParty = usePartyStore.getState().getActiveParty();
+    const levelUps: CombatRewards['levelUps'] = [];
+    for (const member of postParty) {
+      const pre = preLevels.get(member.id);
+      if (pre && member.level > pre.level) {
+        levelUps.push({
+          memberId: member.id,
+          name: pre.name,
+          oldLevel: pre.level,
+          newLevel: member.level,
+        });
+      }
+    }
+    rewards.levelUps = levelUps;
+
+    useCombatStore.setState({ rewards });
 
     // Award gold and materials to inventory
     const inventory = useInventoryStore.getState();
@@ -122,8 +147,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   startCombat: (encounter) => {
     const combat = initializeCombat(encounter);
 
+    // Inject passive modifiers from learned skills into party combat entities
+    const partyWithPassives = combat.party.map((entity) => {
+      const member = encounter.party.find((m) => m.id === entity.id);
+      if (!member) return entity;
+      const modifiers = getPassiveModifiers(member.learnedSkills, lookupSkill);
+      return { ...entity, passiveModifiers: modifiers };
+    });
+
     set({
-      combat,
+      combat: { ...combat, party: partyWithPassives },
       encounter,
       lastEvents: [],
       rewards: null,

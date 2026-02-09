@@ -37,6 +37,7 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'ailment', ailmentType: 'poison', chance: 70, damagePerTurn: 5, duration: 3 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'toxblob-spore-cloud',
@@ -52,6 +53,7 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'ailment', ailmentType: 'sleep', chance: 50, duration: 2 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'toxblob-spike-trap',
@@ -67,6 +69,7 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'hazard', hazardType: 'spike' },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'toxblob-toxic-aura',
@@ -78,10 +81,10 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'int', amount: 0, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'poison-damage-bonus', amount: 2 },
+    category: 'passive',
   },
   {
     id: 'toxblob-pandemic',
@@ -97,6 +100,7 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'int', multiplier: 1.5, condition: { type: 'has-ailment' } },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'toxblob-web-trap',
@@ -112,5 +116,6 @@ export const TOXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'hazard', hazardType: 'web' },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];

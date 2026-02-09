@@ -58,6 +58,19 @@ export interface ClassDefinition {
 }
 
 // ============================================================================
+// Passive Modifiers & Skill Categories
+// ============================================================================
+
+/** Modifier granted by a learned passive skill */
+export type PassiveModifier =
+  | { type: 'flat-stat'; stat: keyof EntityStats; amount: number }
+  | { type: 'bind-duration-bonus'; amount: number }
+  | { type: 'poison-damage-bonus'; amount: number };
+
+/** Skill category for tree visualization */
+export type SkillCategory = 'core' | 'active' | 'passive' | 'synergy' | 'ultimate';
+
+// ============================================================================
 // Skill Definitions
 // ============================================================================
 
@@ -197,6 +210,10 @@ export interface SkillDefinition {
   effects: SkillEffect[];
   /** Is this a passive skill? (always active, no TP cost) */
   isPassive: boolean;
+  /** Passive effect granted when learned (passive skills only) */
+  passiveModifier?: PassiveModifier;
+  /** Skill category for tree visualization */
+  category?: SkillCategory;
 }
 
 // ============================================================================

@@ -36,6 +36,7 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
       { type: 'heal', multiplier: 1.5 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'mendblob-cure-binds',
@@ -53,6 +54,7 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
       { type: 'bind', bindType: 'leg', chance: 100, duration: 0 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'mendblob-group-heal',
@@ -68,6 +70,7 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
       { type: 'heal', multiplier: 0.8 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'mendblob-healing-touch',
@@ -79,10 +82,10 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'wis', amount: 3, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'flat-stat', stat: 'wis', amount: 3 },
+    category: 'passive',
   },
   {
     id: 'mendblob-revitalize',
@@ -98,6 +101,7 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'int', multiplier: 3.0, condition: { type: 'below-hp-percent', threshold: 25 } },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'mendblob-purify',
@@ -113,5 +117,6 @@ export const MENDBLOB_SKILLS: SkillDefinition[] = [
       { type: 'ailment', ailmentType: 'poison', chance: 100, duration: 0 },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];

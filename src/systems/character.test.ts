@@ -20,6 +20,8 @@ import {
   learnSkill,
   createPartyMember,
   getEquipmentBonuses,
+  getPassiveStatBonuses,
+  getPassiveModifiers,
 } from './character';
 
 // ============================================================================
@@ -405,5 +407,139 @@ describe('getEquipmentBonuses', () => {
     expect(bonuses.vit).toBe(2);
     expect(bonuses.agi).toBe(1);
     expect(bonuses.hp).toBe(10);
+  });
+});
+
+// ============================================================================
+// Passive Skill Bonus Tests
+// ============================================================================
+
+function createTestPassiveSkill(overrides?: Partial<SkillDefinition>): SkillDefinition {
+  return {
+    id: 'test-passive',
+    name: 'Test Passive',
+    description: 'A test passive',
+    classId: 'test-class',
+    tpCost: 0,
+    targetType: 'self',
+    bodyPartRequired: null,
+    levelRequired: 3,
+    skillPointCost: 1,
+    effects: [],
+    isPassive: true,
+    passiveModifier: { type: 'flat-stat', stat: 'vit', amount: 2 },
+    ...overrides,
+  };
+}
+
+describe('getPassiveStatBonuses', () => {
+  it('returns zero bonuses when no passives learned', () => {
+    const lookup = () => createTestSkill();
+    const bonuses = getPassiveStatBonuses([], lookup);
+    expect(bonuses).toEqual({ str: 0, vit: 0, int: 0, wis: 0, agi: 0, luc: 0 });
+  });
+
+  it('returns flat stat bonuses from learned passives', () => {
+    const passive = createTestPassiveSkill({
+      id: 'vit-passive',
+      passiveModifier: { type: 'flat-stat', stat: 'vit', amount: 2 },
+    });
+    const lookup = (id: string) => id === 'vit-passive' ? passive : createTestSkill();
+    const bonuses = getPassiveStatBonuses(['vit-passive'], lookup);
+    expect(bonuses.vit).toBe(2);
+    expect(bonuses.str).toBe(0);
+  });
+
+  it('ignores non-stat passive modifiers', () => {
+    const passive = createTestPassiveSkill({
+      id: 'bind-passive',
+      passiveModifier: { type: 'bind-duration-bonus', amount: 1 },
+    });
+    const lookup = (id: string) => id === 'bind-passive' ? passive : createTestSkill();
+    const bonuses = getPassiveStatBonuses(['bind-passive'], lookup);
+    expect(bonuses).toEqual({ str: 0, vit: 0, int: 0, wis: 0, agi: 0, luc: 0 });
+  });
+
+  it('sums multiple passive stat bonuses', () => {
+    const vitPassive = createTestPassiveSkill({
+      id: 'vit-passive',
+      passiveModifier: { type: 'flat-stat', stat: 'vit', amount: 2 },
+    });
+    const agiPassive = createTestPassiveSkill({
+      id: 'agi-passive',
+      passiveModifier: { type: 'flat-stat', stat: 'agi', amount: 3 },
+    });
+    const lookup = (id: string) => {
+      if (id === 'vit-passive') return vitPassive;
+      if (id === 'agi-passive') return agiPassive;
+      return createTestSkill();
+    };
+    const bonuses = getPassiveStatBonuses(['vit-passive', 'agi-passive'], lookup);
+    expect(bonuses.vit).toBe(2);
+    expect(bonuses.agi).toBe(3);
+  });
+});
+
+describe('getPassiveModifiers', () => {
+  it('returns all passive modifiers from learned skills', () => {
+    const bindPassive = createTestPassiveSkill({
+      id: 'bind-passive',
+      passiveModifier: { type: 'bind-duration-bonus', amount: 1 },
+    });
+    const poisonPassive = createTestPassiveSkill({
+      id: 'poison-passive',
+      passiveModifier: { type: 'poison-damage-bonus', amount: 2 },
+    });
+    const lookup = (id: string) => {
+      if (id === 'bind-passive') return bindPassive;
+      if (id === 'poison-passive') return poisonPassive;
+      return createTestSkill();
+    };
+    const mods = getPassiveModifiers(['bind-passive', 'poison-passive'], lookup);
+    expect(mods).toHaveLength(2);
+    expect(mods[0].type).toBe('bind-duration-bonus');
+    expect(mods[1].type).toBe('poison-damage-bonus');
+  });
+});
+
+describe('calculateEffectiveStats with passives', () => {
+  it('adds passive bonuses to effective stats', () => {
+    const base: EntityStats = { str: 10, vit: 10, int: 5, wis: 5, agi: 8, luc: 5 };
+    const passiveBonuses: EntityStats = { str: 0, vit: 2, int: 0, wis: 0, agi: 3, luc: 0 };
+    const stats = calculateEffectiveStats(base, [], passiveBonuses);
+    expect(stats.vit).toBe(12);
+    expect(stats.agi).toBe(11);
+    expect(stats.str).toBe(10);
+  });
+
+  it('stacks equipment and passive bonuses', () => {
+    const base: EntityStats = { str: 10, vit: 10, int: 5, wis: 5, agi: 8, luc: 5 };
+    const weapon = createTestEquipment({ bonuses: { str: 3 } });
+    const passiveBonuses: EntityStats = { str: 0, vit: 2, int: 0, wis: 0, agi: 0, luc: 0 };
+    const stats = calculateEffectiveStats(base, [weapon], passiveBonuses);
+    expect(stats.str).toBe(13);
+    expect(stats.vit).toBe(12);
+  });
+});
+
+describe('recalculatePartyMember with skillLookup', () => {
+  it('includes passive stat bonuses when skillLookup provided', () => {
+    const classData = createTestClass();
+    const passive = createTestPassiveSkill({
+      id: 'vit-passive',
+      passiveModifier: { type: 'flat-stat', stat: 'vit', amount: 2 },
+    });
+    const member = createTestMember({ learnedSkills: ['vit-passive'] });
+    const lookup = (id: string) => id === 'vit-passive' ? passive : createTestSkill();
+
+    const updated = recalculatePartyMember(member, classData, [], lookup);
+    expect(updated.stats.vit).toBe(12); // 10 base + 2 passive
+  });
+
+  it('works without skillLookup (backward compatible)', () => {
+    const classData = createTestClass();
+    const member = createTestMember({ learnedSkills: ['vit-passive'] });
+    const updated = recalculatePartyMember(member, classData, []);
+    expect(updated.stats.vit).toBe(10); // No passive bonus applied
   });
 });

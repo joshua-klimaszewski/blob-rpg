@@ -145,6 +145,7 @@ function createTestEntity(overrides?: Partial<CombatEntity>): CombatEntity {
     isParty: false,
     skills: [],
     buffs: [],
+    passiveModifiers: [],
     ...overrides,
   };
 }
