@@ -421,6 +421,15 @@ export function CombatScreen() {
                     ))}
                   </div>
                 )}
+                {rewards.levelUps.length > 0 && (
+                  <div className="mt-2 border-t border-paper/30 pt-2">
+                    {rewards.levelUps.map((lu) => (
+                      <div key={lu.memberId} className="font-bold">
+                        {lu.name} leveled up! Lv.{lu.oldLevel} → Lv.{lu.newLevel}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div className="text-xs">Returning to dungeon...</div>

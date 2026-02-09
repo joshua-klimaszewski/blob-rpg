@@ -468,4 +468,5 @@ export interface CombatRewards {
   xp: number;
   gold: number;
   materials: Array<{ id: string; quantity: number }>;
+  levelUps: Array<{ memberId: string; name: string; oldLevel: number; newLevel: number }>;
 }

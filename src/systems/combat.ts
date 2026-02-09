@@ -2086,5 +2086,6 @@ export function calculateRewards(
     xp: totalXp,
     gold: totalGold,
     materials,
+    levelUps: [],
   };
 }

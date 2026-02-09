@@ -76,11 +76,35 @@ interface CombatStore {
 function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
   if (state.phase === 'victory') {
     const rewards = calculateRewards(state, defaultRNG, getEnemy);
-    useCombatStore.setState({ rewards });
+
+    // Snapshot pre-XP levels for level-up detection
+    const partyStore = usePartyStore.getState();
+    const preLevels = new Map<string, { level: number; name: string }>();
+    for (const member of partyStore.getActiveParty()) {
+      preLevels.set(member.id, { level: member.level, name: member.name });
+    }
 
     // Award XP and sync HP/TP to party store
-    usePartyStore.getState().awardXp(rewards.xp);
+    partyStore.awardXp(rewards.xp);
     usePartyStore.getState().syncHpTpFromCombat(state.party);
+
+    // Detect level-ups by comparing pre/post levels
+    const postParty = usePartyStore.getState().getActiveParty();
+    const levelUps: CombatRewards['levelUps'] = [];
+    for (const member of postParty) {
+      const pre = preLevels.get(member.id);
+      if (pre && member.level > pre.level) {
+        levelUps.push({
+          memberId: member.id,
+          name: pre.name,
+          oldLevel: pre.level,
+          newLevel: member.level,
+        });
+      }
+    }
+    rewards.levelUps = levelUps;
+
+    useCombatStore.setState({ rewards });
 
     // Award gold and materials to inventory
     const inventory = useInventoryStore.getState();
