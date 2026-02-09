@@ -1145,6 +1145,65 @@ blob-rpg-guild-<id>-suspend             → SuspendSaveData (dungeon save & quit
 
 **PR:** #20 — feat/save-system (branch from main, git worktree)
 
+### Sprint 14 — Quest Reward Feedback, Shop Material Preview & UI Polish (2026-02-09)
+
+**Goal:** Improve quest claim feedback, add locked equipment preview in shop, add buy confirmation, rename Guild→Quests, and implement responsive max-width layout.
+
+**Tasks:**
+
+**Quest Claim Reward Feedback:**
+- [x] Add `claimedRewards` local state to GuildScreen to track reward details per quest (2026-02-09)
+- [x] Show inline reward summary after claiming: `+50G  +100XP` (and `+ Equipment Name` if applicable) (2026-02-09)
+- [x] Show reward line (gold/xp/equipment) on all active quest cards below description (2026-02-09)
+- [x] Split active quests into "Active Quests" (unclaimed) and "Claimed" sections (2026-02-09)
+- [x] Claimed section uses grayed-out styling with reward receipt (2026-02-09)
+
+**Shop: Locked Equipment with Material Progress:**
+- [x] Show ALL recipe equipment in ShopBuyTab (not just unlocked) (2026-02-09)
+- [x] Locked items display with dashed border, grayed out, non-interactive (2026-02-09)
+- [x] Each locked item shows material progress per requirement (e.g., "Slime Gel: 2/5") (2026-02-09)
+- [x] Met requirements highlighted with bold black text (2026-02-09)
+- [x] Sort order: starter gear → unlocked recipes → locked recipes (2026-02-09)
+
+**Shop: Buy Confirmation:**
+- [x] Add `selectedId` state to ShopBuyTab — tapping item selects it (inverted colors) (2026-02-09)
+- [x] Selected item reveals "Buy for XG" + "Cancel" button row underneath (2026-02-09)
+- [x] Only "Buy" button actually purchases — prevents accidental buys (2026-02-09)
+- [x] Applied to consumables, starter gear, and unlocked recipe equipment (2026-02-09)
+
+**UI Rename & Layout:**
+- [x] Rename "Guild" to "Quests" in GuildScreen header and TownScreen button (2026-02-09)
+- [x] Add responsive `max-w-half` CSS utility: 100% on mobile, 50vw on md+ (768px) (2026-02-09)
+- [x] Replace `max-w-xs` with `max-w-half` across all 17 component files (2026-02-09)
+- [x] Add `max-w-half mx-auto` to CharacterSheet, InventoryScreen, PartyFormation (2026-02-09)
+
+**Test Coverage:**
+- 426 tests passing (no regressions)
+- Build verified clean (`tsc -b && vite build`)
+
+**Files Modified (19):**
+- `src/index.css` — Added `@utility max-w-half` with responsive breakpoint
+- `src/components/town/GuildScreen.tsx` — Reward feedback, claimed section, rename to Quests
+- `src/components/town/ShopBuyTab.tsx` — Locked equipment preview, buy confirmation
+- `src/components/town/TownScreen.tsx` — Renamed Guild→Quests button, max-w-half
+- `src/components/character/CharacterSheet.tsx` — max-w-half mx-auto
+- `src/components/character/PartyFormation.tsx` — max-w-half mx-auto
+- `src/components/town/InventoryScreen.tsx` — max-w-half mx-auto
+- `src/components/town/ShopScreen.tsx` — max-w-half
+- `src/components/town/InnScreen.tsx` — max-w-half
+- `src/components/town/SaveGameScreen.tsx` — max-w-half
+- `src/components/ui/TitleScreen.tsx` — max-w-half
+- `src/components/ui/GuildNameScreen.tsx` — max-w-half
+- `src/components/ui/LoadGameScreen.tsx` — max-w-half
+- `src/components/ui/ConfirmDialog.tsx` — max-w-half
+- `src/components/combat/CombatScreen.tsx` — max-w-half
+- `src/components/combat/CombatGrid.tsx` — max-w-half
+- `src/components/combat/ActionMenu.tsx` — max-w-half
+- `src/components/combat/SkillList.tsx` — max-w-half
+- `src/components/combat/ItemMenu.tsx` — max-w-half
+
+**PR:** #35 — feat/quest-ui
+
 ---
 
 ## Research Notes

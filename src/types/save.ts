@@ -67,6 +67,7 @@ export interface SaveData {
   };
   quests: {
     activeQuests: ActiveQuest[];
+    floorsReached?: string[]; // Optional for backward compatibility
   };
 }
 

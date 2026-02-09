@@ -39,7 +39,7 @@ export function InventoryScreen() {
   ];
 
   return (
-    <div className="flex flex-col min-h-dvh bg-paper">
+    <div className="flex flex-col min-h-dvh bg-paper max-w-half mx-auto">
       {/* Header */}
       <div className="px-4 py-3 border-b-2 border-ink flex justify-between items-center">
         <h1 className="text-lg font-bold">Inventory</h1>

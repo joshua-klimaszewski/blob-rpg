@@ -11,9 +11,14 @@ import { getQuest } from '../data/quests/index';
 interface QuestStore {
   /** Active quests by definition ID */
   activeQuests: ActiveQuest[];
+  /** Floors the player has reached (unlocks floor-gated quests) */
+  floorsReached: string[];
 
   /** Accept a quest from the guild board */
   acceptQuest: (definitionId: string) => void;
+
+  /** Accept multiple quests at once (batch operation) */
+  acceptAll: (definitionIds: string[]) => void;
 
   /** Increment progress for kill quests */
   incrementKillProgress: (enemyId: string, count: number) => void;
@@ -24,11 +29,14 @@ interface QuestStore {
   /** Mark explore quest complete (on entering a floor) */
   completeExploreQuest: (floorId: string) => void;
 
-  /** Claim rewards for a completed quest (returns gold/xp, or null if not claimable) */
-  claimQuest: (definitionId: string) => { gold: number; xp: number } | null;
+  /** Claim rewards for a completed quest (returns gold/xp/equipment, or null if not claimable) */
+  claimQuest: (definitionId: string) => { gold: number; xp: number; equipmentId?: string } | null;
 
   /** Check if a quest is already active or claimed */
   isQuestActive: (definitionId: string) => boolean;
+
+  /** Mark a floor as reached (unlocks floor-gated quests) */
+  markFloorReached: (floorId: string) => void;
 
   /** Reset quests */
   reset: () => void;
@@ -36,6 +44,7 @@ interface QuestStore {
 
 export const useQuestStore = create<QuestStore>((set, get) => ({
   activeQuests: [],
+  floorsReached: [],
 
   acceptQuest: (definitionId) => {
     const { activeQuests } = get();
@@ -47,6 +56,18 @@ export const useQuestStore = create<QuestStore>((set, get) => ({
         { definitionId, progress: 0, completed: false, claimed: false },
       ],
     });
+  },
+
+  acceptAll: (definitionIds) => {
+    const { activeQuests } = get();
+    const activeIds = new Set(activeQuests.map((q) => q.definitionId));
+    const newQuests = definitionIds
+      .filter((id) => !activeIds.has(id))
+      .map((id) => ({ definitionId: id, progress: 0, completed: false, claimed: false }));
+
+    if (newQuests.length === 0) return;
+
+    set({ activeQuests: [...activeQuests, ...newQuests] });
   },
 
   incrementKillProgress: (enemyId, count) => {
@@ -120,7 +141,14 @@ export const useQuestStore = create<QuestStore>((set, get) => ({
     return activeQuests.some((q) => q.definitionId === definitionId);
   },
 
+  markFloorReached: (floorId) => {
+    set((state) => {
+      if (state.floorsReached.includes(floorId)) return state;
+      return { floorsReached: [...state.floorsReached, floorId] };
+    });
+  },
+
   reset: () => {
-    set({ activeQuests: [] });
+    set({ activeQuests: [], floorsReached: [] });
   },
 }));

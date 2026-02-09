@@ -38,7 +38,7 @@ export function TownScreen() {
       )}
 
       {/* Status bar */}
-      <div className="w-full max-w-xs flex justify-between text-sm">
+      <div className="w-full max-w-half flex justify-between text-sm">
         <span className="font-bold">{gold}G</span>
         {pendingQuests > 0 && (
           <span className="text-xs">
@@ -49,7 +49,7 @@ export function TownScreen() {
 
       {/* Party HP summary */}
       {activeParty.length > 0 && (
-        <div className="w-full max-w-xs">
+        <div className="w-full max-w-half">
           <div className="flex flex-col gap-1">
             {activeParty.map((member) => (
               <div key={member.id} className="flex items-center justify-between text-xs">
@@ -71,7 +71,7 @@ export function TownScreen() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-col gap-3 w-full max-w-half">
         <button
           onClick={() => enterDungeon('verdant-depths-f1')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
@@ -97,7 +97,7 @@ export function TownScreen() {
           onClick={() => setScreen('guild')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
-          Guild{claimableQuests > 0 ? ` (${claimableQuests})` : ''}
+          Quests{claimableQuests > 0 ? ` (${claimableQuests})` : ''}
         </button>
 
         <button

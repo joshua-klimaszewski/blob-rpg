@@ -47,7 +47,7 @@ export function ActionMenu({
         <div className="text-center text-sm mb-2">
           {selectedTile ? `Tap ${label} to confirm` : 'Select a target'}
         </div>
-        <div className="flex gap-2 justify-center max-w-xs mx-auto">
+        <div className="flex gap-2 justify-center max-w-half mx-auto">
           <button
             type="button"
             className={`flex-1 min-h-touch border-2 font-bold text-sm
@@ -73,7 +73,7 @@ export function ActionMenu({
   // Default: show action choices
   return (
     <div className="px-4 py-3 border-t-2 border-ink bg-paper">
-      <div className="flex flex-col gap-2 max-w-xs mx-auto">
+      <div className="flex flex-col gap-2 max-w-half mx-auto">
         <div className="flex gap-2">
           <button
             type="button"
