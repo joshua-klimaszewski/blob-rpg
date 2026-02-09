@@ -39,6 +39,7 @@ import type {
   FleeSuccessEvent,
   FleeFailedEvent,
   CombatRewards,
+  EnemyDefinition,
 } from '../types/combat';
 
 import type { SkillDefinition, SkillEffect } from '../types/character';
@@ -984,6 +985,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
   const party: CombatEntity[] = encounter.party.map((member) => ({
     id: member.id,
     name: member.name,
+    definitionId: member.classId,
     hp: member.hp,
     maxHp: member.maxHp,
     tp: member.tp,
@@ -1019,6 +1021,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     const enemy: CombatEntity = {
       id: placement.instanceId,
       name: placement.definition.name,
+      definitionId: placement.definition.id,
       hp: placement.definition.maxHp,
       maxHp: placement.definition.maxHp,
       tp: placement.definition.maxTp,
@@ -1923,19 +1926,42 @@ export function tickBuffs(entity: CombatEntity): CombatEntity {
 /**
  * Calculate combat rewards after victory
  */
-export function calculateRewards(state: CombatState): CombatRewards {
-  // MVP: Fixed 100 XP, no material drops
-  let totalXp = 100;
+export function calculateRewards(
+  state: CombatState,
+  rng: RNG = defaultRNG,
+  getEnemyDef?: (id: string) => EnemyDefinition | undefined,
+): CombatRewards {
+  let totalXp = 0;
+  let totalGold = 0;
+  const materialCounts: Record<string, number> = {};
 
-  // Add XP from defeated enemies
   for (const enemy of state.enemies) {
     if (!isAlive(enemy)) {
-      totalXp += 20; // MVP: fixed 20 XP per enemy
+      // Look up the enemy definition for drop data
+      const def = getEnemyDef?.(enemy.definitionId);
+      if (def) {
+        totalXp += def.dropTable.xp;
+        const { min, max } = def.dropTable.gold;
+        totalGold += min + Math.floor(rng() * (max - min + 1));
+
+        for (const drop of def.dropTable.materials) {
+          if (rng() < drop.chance) {
+            materialCounts[drop.materialId] = (materialCounts[drop.materialId] ?? 0) + 1;
+          }
+        }
+      } else {
+        // Fallback if no definition found
+        totalXp += 20;
+        totalGold += 10;
+      }
     }
   }
 
+  const materials = Object.entries(materialCounts).map(([id, quantity]) => ({ id, quantity }));
+
   return {
     xp: totalXp,
-    materials: [],
+    gold: totalGold,
+    materials,
   };
 }

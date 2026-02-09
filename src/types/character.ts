@@ -227,4 +227,6 @@ export interface EquipmentDefinition {
   /** If set, only this class can equip it (null = any class) */
   classRestriction: string | null;
   description: string;
+  /** Buy price in gold (0 = not purchasable / starter gear) */
+  buyPrice: number;
 }
