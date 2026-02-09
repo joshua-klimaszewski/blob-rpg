@@ -58,6 +58,23 @@ export function useAutoSave(): void {
     };
   }, []);
 
+  // Save immediately on transition to a town screen (e.g. warp from dungeon)
+  const prevScreenRef = useRef(useGameStore.getState().screen);
+  useEffect(() => {
+    const unsubscribe = useGameStore.subscribe((state) => {
+      const prev = prevScreenRef.current;
+      const next = state.screen;
+      prevScreenRef.current = next;
+      if (prev === next) return;
+
+      const guildId = useGuildStore.getState().currentGuildId;
+      if (guildId && TOWN_SCREENS.has(next)) {
+        autoSaveTown();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Dungeon auto-save: subscribe to dungeon store changes
   useEffect(() => {
     const unsubscribe = useDungeonStore.subscribe(() => {
