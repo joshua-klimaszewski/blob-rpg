@@ -24,6 +24,18 @@ import {
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
 import { getSkill } from '../data/classes/index';
+import { getEnemySkill } from '../data/enemies/skills';
+import type { SkillDefinition } from '../types/character';
+
+/** Combined skill lookup: checks player skills first, then enemy skills */
+function lookupSkill(id: string): SkillDefinition {
+  const playerSkill = getSkill(id);
+  if (playerSkill) return playerSkill;
+  const enemySkill = getEnemySkill(id);
+  if (enemySkill) return enemySkill;
+  // Fallback — should not happen if data is consistent
+  throw new Error(`Unknown skill ID: ${id}`);
+}
 
 interface CombatStore {
   /** Current combat state (null = not in combat) */
@@ -103,7 +115,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const { combat } = get();
     if (!combat) return;
 
-    const result = executeAction(combat, action, defaultRNG, getSkill);
+    const result = executeAction(combat, action, defaultRNG, lookupSkill);
 
     set({
       combat: result.state,
@@ -120,7 +132,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const currentEntry = combat.turnOrder[combat.currentActorIndex];
     if (!currentEntry) return;
 
-    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG);
+    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill);
 
     set({
       combat: result.state,

@@ -456,8 +456,12 @@ export function executeAttack(
     const defender = findEntity(newState, targetId);
     if (!defender || !isAlive(defender)) continue;
 
+    // Check if defender is defending
+    const defenderTurnEntry = newState.turnOrder.find((e) => e.entityId === targetId);
+    const defenderIsDefending = defenderTurnEntry?.isDefending ?? false;
+
     // Calculate damage (MVP: multiplier = 1.0 for basic attack)
-    const result = calculateDamage(attacker, defender, 1.0, newState.comboCounter, rng);
+    const result = calculateDamage(attacker, defender, 1.0, newState.comboCounter, rng, 'str', defenderIsDefending);
 
     // Apply damage
     const damagedEntity = applyDamage(defender, result.damage);
@@ -1247,20 +1251,50 @@ export function executeAction(
 }
 
 /**
- * Execute an enemy's turn (MVP: basic attack on random alive party member)
+ * Execute an enemy's turn.
+ * 60% basic attack, 40% random available skill.
  * Party members aren't on the grid, so enemies attack them directly.
  */
 export function executeEnemyTurn(
   state: CombatState,
   actorId: string,
-  rng: RNG = defaultRNG
+  rng: RNG = defaultRNG,
+  skillLookup?: (id: string) => SkillDefinition
 ): ActionResult {
   const actor = findEntity(state, actorId);
   if (!actor || !isAlive(actor) || actor.isParty) {
     return { state, events: [] };
   }
 
-  // Pick random alive party member
+  // Try to use a skill (40% chance if skills available)
+  if (skillLookup && actor.skills.length > 0 && rng() < 0.4) {
+    const usableSkills = actor.skills
+      .map((id) => skillLookup(id))
+      .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
+      .filter((s) => canUseSkill(actor, s).canUse);
+
+    if (usableSkills.length > 0) {
+      const skill = usableSkills[Math.floor(rng() * usableSkills.length)];
+
+      // Pick a target tile — for enemy skills targeting tiles, pick a random
+      // occupied tile or just [0,0] for party-targeting skills
+      const targetTile: GridPosition = actor.position ?? [1, 1];
+
+      const skillResult = executeSkillAction(state, actorId, skill.id, targetTile, rng, skillLookup);
+
+      // Mark actor as having acted
+      const newTurnOrder = skillResult.state.turnOrder.map((entry) =>
+        entry.entityId === actorId ? { ...entry, hasActed: true } : entry
+      );
+
+      return {
+        state: { ...skillResult.state, turnOrder: newTurnOrder },
+        events: skillResult.events,
+      };
+    }
+  }
+
+  // Basic attack fallback
   const aliveParty = getAliveParty(state);
   if (aliveParty.length === 0) {
     return { state, events: [] };
@@ -1269,8 +1303,12 @@ export function executeEnemyTurn(
   const targetIndex = Math.floor(rng() * aliveParty.length);
   const target = aliveParty[targetIndex];
 
+  // Check if defender is defending
+  const targetTurnEntry = state.turnOrder.find((e) => e.entityId === target.id);
+  const targetIsDefending = targetTurnEntry?.isDefending ?? false;
+
   // Calculate damage (multiplier 1.0 for basic attack)
-  const result = calculateDamage(actor, target, 1.0, 0, rng);
+  const result = calculateDamage(actor, target, 1.0, 0, rng, 'str', targetIsDefending);
 
   // Apply damage
   const damagedTarget = applyDamage(target, result.damage);
