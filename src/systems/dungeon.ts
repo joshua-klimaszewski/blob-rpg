@@ -415,15 +415,46 @@ export function processTurn(
   return { state: finalState, events }
 }
 
+// ---- Warp points ----
+
+export interface WarpPointInfo {
+  position: Position
+  label: string
+}
+
+/** Scan a floor's tile grid for warp-eligible tiles (entrance + checkpoints + shortcuts) */
+export function getFloorWarpPoints(floor: FloorData): WarpPointInfo[] {
+  const points: WarpPointInfo[] = [
+    { position: floor.playerStart, label: 'Entrance' },
+  ]
+
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      const tile = floor.tiles[y][x]
+      if (tile.type === 'checkpoint') {
+        points.push({ position: { x, y }, label: 'Checkpoint' })
+      } else if (tile.type === 'shortcut') {
+        points.push({ position: { x, y }, label: 'Shortcut' })
+      }
+    }
+  }
+
+  return points
+}
+
 // ---- Initialization ----
 
 /** Create initial DungeonState from a FloorData definition */
-export function initializeDungeonState(floor: FloorData): DungeonState {
-  const initialVisible = computeVisibleTiles(floor.playerStart, floor)
+export function initializeDungeonState(
+  floor: FloorData,
+  startPosition?: Position,
+): DungeonState {
+  const spawnPos = startPosition ?? floor.playerStart
+  const initialVisible = computeVisibleTiles(spawnPos, floor)
   return {
     floorId: floor.id,
     floorNumber: floor.floorNumber,
-    playerPosition: { ...floor.playerStart },
+    playerPosition: { ...spawnPos },
     foes: floor.foeSpawns.map((spawn) => ({
       id: spawn.id,
       position: { ...spawn.position },

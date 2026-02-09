@@ -76,7 +76,7 @@ describe('PartyStore', () => {
 
     it('triggers level up when XP exceeds threshold', () => {
       usePartyStore.getState().initializeRoster();
-      usePartyStore.getState().awardXp(500); // L2 needs 400
+      usePartyStore.getState().awardXp(120); // L2 needs 100
 
       const active = usePartyStore.getState().getActiveParty();
       for (const member of active) {
@@ -175,7 +175,7 @@ describe('PartyStore', () => {
     it('learns a skill when requirements met', () => {
       usePartyStore.getState().initializeRoster();
       // Give skill points via XP
-      usePartyStore.getState().awardXp(500); // Level 2, 1 SP
+      usePartyStore.getState().awardXp(120); // Level 2, 1 SP
 
       const success = usePartyStore.getState().investSkillPoint('party-1', 'ironblob-shield-bash');
       expect(success).toBe(true);

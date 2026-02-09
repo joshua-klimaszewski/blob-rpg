@@ -28,11 +28,11 @@ export const MAX_LEVEL = 20;
 
 /**
  * Calculate XP required for a given level.
- * Formula: level * level * 100
- * L2=400, L5=2500, L10=10000, L20=40000
+ * Formula: level * level * 25
+ * L2=100, L5=625, L10=2500, L20=10000
  */
 export function xpForLevel(level: number): number {
-  return level * level * 100;
+  return level * level * 25;
 }
 
 /**

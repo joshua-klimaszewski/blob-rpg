@@ -106,11 +106,11 @@ function createTestEquipment(overrides?: Partial<EquipmentDefinition>): Equipmen
 
 describe('xpForLevel', () => {
   it('calculates XP threshold correctly', () => {
-    expect(xpForLevel(1)).toBe(100);
-    expect(xpForLevel(2)).toBe(400);
-    expect(xpForLevel(5)).toBe(2500);
-    expect(xpForLevel(10)).toBe(10000);
-    expect(xpForLevel(20)).toBe(40000);
+    expect(xpForLevel(1)).toBe(25);
+    expect(xpForLevel(2)).toBe(100);
+    expect(xpForLevel(5)).toBe(625);
+    expect(xpForLevel(10)).toBe(2500);
+    expect(xpForLevel(20)).toBe(10000);
   });
 });
 
@@ -118,12 +118,12 @@ describe('checkLevelUp', () => {
   const classData = createTestClass();
 
   it('returns null if not enough XP', () => {
-    const member = createTestMember({ xp: 300 });
+    const member = createTestMember({ xp: 50 });
     expect(checkLevelUp(member, classData)).toBeNull();
   });
 
   it('returns level-up result when XP is sufficient', () => {
-    const member = createTestMember({ xp: 400 });
+    const member = createTestMember({ xp: 100 });
     const result = checkLevelUp(member, classData);
 
     expect(result).not.toBeNull();

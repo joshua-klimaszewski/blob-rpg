@@ -24,6 +24,23 @@ import type {
 import { MAX_GUILDS, MAX_SLOTS_PER_GUILD, SAVE_VERSION } from '../types/save';
 
 // ============================================================================
+// Save data migration
+// ============================================================================
+
+/** Migrate save data from older versions to current SAVE_VERSION */
+export function migrateSaveData<T extends { version?: number }>(data: T): T {
+  const version = data.version ?? 1;
+
+  if (version < 2) {
+    // v1 → v2: add dungeonProgress
+    (data as Record<string, unknown>).dungeonProgress ??= { floors: {} };
+    (data as Record<string, unknown>).version = 2;
+  }
+
+  return data;
+}
+
+// ============================================================================
 // Key helpers
 // ============================================================================
 
@@ -201,7 +218,7 @@ export function saveToSlot(
 export function loadSlot(guildId: string, slotId: string): SaveData | null {
   const raw = localStorage.getItem(slotDataKey(guildId, slotId));
   if (!raw) return null;
-  return JSON.parse(raw) as SaveData;
+  return migrateSaveData(JSON.parse(raw) as SaveData);
 }
 
 export function deleteSlot(guildId: string, slotId: string): void {
@@ -264,7 +281,7 @@ export function loadAndDeleteSuspend(guildId: string): SuspendSaveData | null {
     saveRegistry(registry);
   }
 
-  return JSON.parse(raw) as SuspendSaveData;
+  return migrateSaveData(JSON.parse(raw) as SuspendSaveData);
 }
 
 export function hasSuspendSave(guildId: string): boolean {

@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { useDungeonStore } from '../../stores/dungeonStore'
 import { useGameStore } from '../../stores/gameStore'
 import { usePartyStore } from '../../stores/partyStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -7,7 +6,6 @@ import { useQuestStore } from '../../stores/questStore'
 import { useGuildStore } from '../../stores/guildStore'
 
 export function TownScreen() {
-  const enterDungeon = useDungeonStore((s) => s.enterDungeon)
   const setScreen = useGameStore((s) => s.setScreen)
   const roster = usePartyStore((s) => s.roster)
   const activePartyIds = usePartyStore((s) => s.activePartyIds)
@@ -73,7 +71,7 @@ export function TownScreen() {
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <button
-          onClick={() => enterDungeon('verdant-depths-f1')}
+          onClick={() => setScreen('dungeon-select')}
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
           Enter Dungeon

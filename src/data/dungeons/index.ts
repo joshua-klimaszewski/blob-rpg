@@ -15,4 +15,11 @@ export function getFloor(id: string): FloorData | undefined {
   return FLOOR_REGISTRY.get(id)
 }
 
+/** Get all floors for a dungeon, sorted by floor number */
+export function getDungeonFloors(dungeonId: string): FloorData[] {
+  return Array.from(FLOOR_REGISTRY.values())
+    .filter((f) => f.dungeonId === dungeonId)
+    .sort((a, b) => a.floorNumber - b.floorNumber)
+}
+
 export { FLOOR_1, FLOOR_2, FLOOR_3 }
