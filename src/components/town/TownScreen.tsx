@@ -4,6 +4,7 @@ import { useGameStore } from '../../stores/gameStore'
 import { usePartyStore } from '../../stores/partyStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useQuestStore } from '../../stores/questStore'
+import { useGuildStore } from '../../stores/guildStore'
 
 export function TownScreen() {
   const enterDungeon = useDungeonStore((s) => s.enterDungeon)
@@ -13,6 +14,7 @@ export function TownScreen() {
   const initializeRoster = usePartyStore((s) => s.initializeRoster)
   const gold = useInventoryStore((s) => s.gold)
   const activeQuests = useQuestStore((s) => s.activeQuests)
+  const guildName = useGuildStore((s) => s.currentGuildName)
 
   // Auto-initialize roster on first visit
   useEffect(() => {
@@ -31,6 +33,9 @@ export function TownScreen() {
   return (
     <div className="flex flex-col items-center gap-4 p-6">
       <h1 className="text-2xl font-bold border-b-2 border-ink pb-2">Town</h1>
+      {guildName && (
+        <div className="text-xs text-gray-500">Guild: {guildName}</div>
+      )}
 
       {/* Status bar */}
       <div className="w-full max-w-xs flex justify-between text-sm">

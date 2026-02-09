@@ -5,7 +5,6 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { ActiveQuest } from '../types/economy';
 import { getQuest } from '../data/quests/index';
 
@@ -35,9 +34,7 @@ interface QuestStore {
   reset: () => void;
 }
 
-export const useQuestStore = create<QuestStore>()(
-  persist(
-    (set, get) => ({
+export const useQuestStore = create<QuestStore>((set, get) => ({
   activeQuests: [],
 
   acceptQuest: (definitionId) => {
@@ -126,12 +123,4 @@ export const useQuestStore = create<QuestStore>()(
   reset: () => {
     set({ activeQuests: [] });
   },
-    }),
-    {
-      name: 'blob-rpg-quests',
-      partialize: (state) => ({
-        activeQuests: state.activeQuests,
-      }),
-    },
-  ),
-);
+}));

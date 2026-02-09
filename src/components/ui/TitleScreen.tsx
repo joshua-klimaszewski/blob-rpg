@@ -1,28 +1,24 @@
+import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
-import { usePartyStore } from '../../stores/partyStore';
-import { useInventoryStore } from '../../stores/inventoryStore';
-import { useQuestStore } from '../../stores/questStore';
-import { hasSaveData, clearAllSaves } from '../../systems/save';
+import { hasAnyGuilds, hasLegacySaveData, migrateLegacySaves } from '../../systems/save';
+import { MAX_GUILDS } from '../../types/save';
+import { getRegistry } from '../../systems/save';
 
 export function TitleScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
-  const initializeRoster = usePartyStore((s) => s.initializeRoster);
-  const roster = usePartyStore((s) => s.roster);
 
-  const saveExists = hasSaveData() && roster.length > 0;
+  // Auto-migrate legacy saves once (synchronous localStorage work, safe in initializer)
+  const [migrated] = useState(() => {
+    if (hasLegacySaveData()) {
+      migrateLegacySaves();
+      return true;
+    }
+    return false;
+  });
 
-  const handleContinue = () => {
-    setScreen('town');
-  };
-
-  const handleNewGame = () => {
-    clearAllSaves();
-    usePartyStore.setState({ roster: [], activePartyIds: [] });
-    useInventoryStore.getState().reset();
-    useQuestStore.getState().reset();
-    initializeRoster();
-    setScreen('town');
-  };
+  const guildsExist = hasAnyGuilds();
+  const registry = getRegistry();
+  const canCreateNew = registry.guilds.length < MAX_GUILDS;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-dvh gap-8 p-6">
@@ -31,22 +27,30 @@ export function TitleScreen() {
         <div className="text-sm text-gray-500">A dungeon crawling adventure</div>
       </div>
 
+      {migrated && (
+        <div className="text-xs text-center border border-ink px-3 py-2 max-w-xs">
+          Legacy save data migrated to &quot;Legacy Guild&quot;
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        {saveExists && (
+        {canCreateNew && (
           <button
-            onClick={handleContinue}
+            onClick={() => setScreen('guild-name')}
             className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
           >
-            Continue
+            New Game
           </button>
         )}
 
-        <button
-          onClick={handleNewGame}
-          className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          New Game
-        </button>
+        {guildsExist && (
+          <button
+            onClick={() => setScreen('load-game')}
+            className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
+          >
+            Load Game
+          </button>
+        )}
       </div>
     </div>
   );

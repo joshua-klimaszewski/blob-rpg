@@ -6,7 +6,6 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { PartyMemberState, CombatEntity } from '../types/combat';
 import type { EquipmentSlot } from '../types/character';
 import { getClass, getSkill } from '../data/classes/index';
@@ -51,9 +50,7 @@ interface PartyStore {
   initializeRoster: () => void;
 }
 
-export const usePartyStore = create<PartyStore>()(
-  persist(
-    (set, get) => ({
+export const usePartyStore = create<PartyStore>((set, get) => ({
       roster: [],
       activePartyIds: [],
 
@@ -162,13 +159,4 @@ export const usePartyStore = create<PartyStore>()(
 
         set({ roster, activePartyIds });
       },
-    }),
-    {
-      name: 'blob-rpg-party',
-      partialize: (state) => ({
-        roster: state.roster,
-        activePartyIds: state.activePartyIds,
-      }),
-    },
-  ),
-);
+}));

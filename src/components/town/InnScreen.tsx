@@ -1,6 +1,7 @@
 import { usePartyStore } from '../../stores/partyStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useGameStore } from '../../stores/gameStore';
+import { useGuildStore } from '../../stores/guildStore';
 import { calculateInnCost } from '../../systems/economy';
 
 export function InnScreen() {
@@ -9,6 +10,7 @@ export function InnScreen() {
   const gold = useInventoryStore((s) => s.gold);
   const spendGold = useInventoryStore((s) => s.spendGold);
   const setScreen = useGameStore((s) => s.setScreen);
+  const guildId = useGuildStore((s) => s.currentGuildId);
 
   const avgLevel = roster.length > 0
     ? Math.floor(roster.reduce((sum, m) => sum + m.level, 0) / roster.length)
@@ -85,6 +87,15 @@ export function InnScreen() {
           </div>
           <div className="text-xs mt-1 font-normal">Restore 50% HP and TP</div>
         </button>
+
+        {guildId && (
+          <button
+            onClick={() => setScreen('save-game')}
+            className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
+          >
+            Save Game
+          </button>
+        )}
 
         <button
           onClick={() => setScreen('town')}
