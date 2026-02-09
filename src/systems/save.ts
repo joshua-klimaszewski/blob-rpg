@@ -21,7 +21,7 @@ import type {
   SaveData,
   SuspendSaveData,
 } from '../types/save';
-import { MAX_GUILDS, MAX_SLOTS_PER_GUILD, SAVE_VERSION } from '../types/save';
+import { MAX_GUILDS, MAX_SLOTS_PER_GUILD, SAVE_VERSION, AUTOSAVE_SLOT_ID } from '../types/save';
 
 // ============================================================================
 // Save data migration
@@ -162,7 +162,8 @@ export function saveToSlot(
   const actualSlotId = slotId ?? generateId();
   const isNewSlot = !slotId || !slotIndex.slots.some((s) => s.slotId === slotId);
 
-  if (isNewSlot && slotIndex.slots.length >= MAX_SLOTS_PER_GUILD) {
+  const manualSlotCount = slotIndex.slots.filter((s) => s.slotId !== AUTOSAVE_SLOT_ID).length;
+  if (isNewSlot && actualSlotId !== AUTOSAVE_SLOT_ID && manualSlotCount >= MAX_SLOTS_PER_GUILD) {
     throw new Error(`Cannot create more than ${MAX_SLOTS_PER_GUILD} slots per guild`);
   }
 
@@ -203,16 +204,24 @@ export function saveToSlot(
   }
   localStorage.setItem(slotIndexKey(guildId), JSON.stringify(slotIndex));
 
-  // Update registry
+  // Update registry (don't count autosave toward slot count)
   const registry = getRegistry();
   const guild = registry.guilds.find((g) => g.id === guildId);
   if (guild) {
-    guild.slotCount = slotIndex.slots.length;
+    guild.slotCount = slotIndex.slots.filter((s) => s.slotId !== AUTOSAVE_SLOT_ID).length;
     guild.lastPlayedAt = now;
     saveRegistry(registry);
   }
 
   return meta;
+}
+
+/** Save to the autosave slot (doesn't count against MAX_SLOTS_PER_GUILD) */
+export function saveAutoSlot(
+  guildId: string,
+  data: Omit<SaveData, 'version' | 'guildId' | 'slotId' | 'savedAt'>
+): SlotMeta {
+  return saveToSlot(guildId, AUTOSAVE_SLOT_ID, data);
 }
 
 export function loadSlot(guildId: string, slotId: string): SaveData | null {
@@ -229,11 +238,11 @@ export function deleteSlot(guildId: string, slotId: string): void {
     slotIndex.slots = slotIndex.slots.filter((s) => s.slotId !== slotId);
     localStorage.setItem(slotIndexKey(guildId), JSON.stringify(slotIndex));
 
-    // Update registry slot count
+    // Update registry slot count (don't count autosave)
     const registry = getRegistry();
     const guild = registry.guilds.find((g) => g.id === guildId);
     if (guild) {
-      guild.slotCount = slotIndex.slots.length;
+      guild.slotCount = slotIndex.slots.filter((s) => s.slotId !== AUTOSAVE_SLOT_ID).length;
       saveRegistry(registry);
     }
   }

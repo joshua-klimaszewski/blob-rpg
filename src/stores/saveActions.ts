@@ -15,6 +15,7 @@ import { useGuildStore } from './guildStore';
 import { useDungeonProgressStore } from './dungeonProgressStore';
 import { getFloor } from '../data/dungeons';
 import { getQuest } from '../data/quests';
+import { saveAutoSlot, saveSuspend } from '../systems/save';
 
 /** Hydrate all stores from a regular save (loads into town) */
 export function loadGameState(save: SaveData): void {
@@ -163,6 +164,27 @@ export function collectSuspendState(): Omit<SuspendSaveData, 'version' | 'guildI
       exploredTiles: [...dungeon.exploredTiles],
     },
   };
+}
+
+/** Auto-save town state to the autosave slot */
+export function autoSaveTown(): void {
+  const { currentGuildId } = useGuildStore.getState();
+  if (!currentGuildId) return;
+
+  const data = collectGameState();
+  saveAutoSlot(currentGuildId, data);
+}
+
+/** Auto-save dungeon state as a suspend save */
+export function autoSaveDungeon(): void {
+  const { currentGuildId } = useGuildStore.getState();
+  if (!currentGuildId) return;
+
+  const { dungeon } = useDungeonStore.getState();
+  if (!dungeon) return;
+
+  const data = collectSuspendState();
+  saveSuspend(currentGuildId, data);
 }
 
 /** Reset all stores to fresh state (for New Game) */

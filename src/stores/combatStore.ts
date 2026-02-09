@@ -25,6 +25,7 @@ import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
 import { useInventoryStore } from './inventoryStore';
 import { useQuestStore } from './questStore';
+import { autoSaveDungeon } from './saveActions';
 import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
@@ -223,6 +224,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     // Return to dungeon (unless defeat sent us to town)
     if (combat?.phase !== 'defeat') {
       useGameStore.getState().setScreen('dungeon');
+      // Auto-save after returning to dungeon with post-combat state
+      setTimeout(() => autoSaveDungeon(), 0);
     }
   },
 
