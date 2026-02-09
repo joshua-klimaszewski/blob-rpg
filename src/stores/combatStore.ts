@@ -59,8 +59,8 @@ interface CombatStore {
   /** Execute a combat action */
   selectAction: (action: Action) => void;
 
-  /** Process an enemy's turn automatically */
-  processEnemyTurn: () => void;
+  /** Process an enemy's turn and advance to the next actor atomically */
+  processEnemyTurnAndAdvance: () => void;
 
   /** Advance to the next actor in turn order */
   advanceToNext: () => void;
@@ -147,7 +147,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     handlePhaseTransition(get, result.state);
   },
 
-  processEnemyTurn: () => {
+  processEnemyTurnAndAdvance: () => {
     const { combat } = get();
     if (!combat || combat.phase !== 'active') return;
 
@@ -156,12 +156,22 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill, getEnemy);
 
+    // If phase changed (victory/defeat), don't advance turn
+    if (result.state.phase !== 'active') {
+      set({
+        combat: result.state,
+        lastEvents: result.events,
+      });
+      handlePhaseTransition(get, result.state);
+      return;
+    }
+
+    // Atomically apply enemy action AND advance turn in one set() call
+    const advanced = advanceTurn(result.state);
     set({
-      combat: result.state,
+      combat: advanced,
       lastEvents: result.events,
     });
-
-    handlePhaseTransition(get, result.state);
   },
 
   advanceToNext: () => {
