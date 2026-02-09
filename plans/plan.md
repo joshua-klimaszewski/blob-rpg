@@ -92,44 +92,114 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 > 6 blob classes with skill trees and equipment.
 
-- [ ] Character stat types (HP, TP, STR, VIT, INT, WIS, AGI, LUC)
-- [ ] Leveling system (XP thresholds, stat growth rates per class)
-- [ ] 6 blob class data definitions (base stats, growth rates, skill tree)
-- [ ] Skill trees: hub-and-spoke model (central core skill + 3-4 branches)
-  - 25/25/25/25 distribution: Passives / Actives / Synergy-conditionals / Ultimate
-  - Point-based investment, prerequisites
-- [ ] Skill tree UI (mobile-friendly, hub-and-spoke layout)
-- [ ] Equipment types: weapon, armor, 2 accessory slots
-- [ ] Equipment stat modifiers + equip/unequip logic
-- [ ] Character sheet UI
-- [ ] Party formation screen (choose 4 of 6 for the dungeon)
+**4a — Core Character System (done):**
+- [x] Character stat types (HP, TP, STR, VIT, INT, WIS, AGI, LUC) (2026-02-08)
+- [x] Leveling system (XP thresholds, stat growth rates per class, max level 20) (2026-02-08)
+- [x] 6 blob class data definitions (base stats, growth rates, 36 skills total) (2026-02-08)
+- [x] Skill execution engine in combat (damage, displacement, bind, ailment, heal, conditional, multi-hit, AOE splash, self-buff) (2026-02-08)
+- [x] Equipment types: weapon, armor, 2 accessory slots (2026-02-08)
+- [x] Equipment stat modifiers applied to combat calculations (2026-02-08)
+- [x] Character sheet UI with tabs for all 6 roster members, stats grid, equipment display, skill list (2026-02-08)
+- [x] Party formation screen (choose 4 of 6, tap-to-toggle) (2026-02-08)
+- [x] Skill learning with SP cost and level requirements (2026-02-08)
+
+**4b — Character System Gaps (remaining):**
+- [ ] Hub-and-spoke skill tree visualization (currently a flat list — needs visual graph with branches, prerequisites, and category grouping)
+- [x] Equipment management from character sheet — inline EquipmentPicker opens on slot tap, shows owned items filtered by slot type, supports equip/unequip, tracks duplicates and prevents double-equipping across party (2026-02-08)
+- [ ] Passive skill auto-application (passives are defined in skill data but not applied to character stats — e.g. Ironblob's "Iron Wall" +VIT passive)
+- [ ] TP costs enforced in skill usage (verify TP is deducted and skills disabled when insufficient TP)
+- [ ] Level-up notification UI (visual feedback when a character levels up after combat)
 
 ### Phase 5: Town & Economy
 
 > Material-driven shop, inn, guild, saves.
 
-- [ ] Town screen with sub-location navigation
-- [ ] Inn: rest to restore HP/TP, cost scales with party level, partial rest option
-- [ ] Shop — material unlock system:
-  - Global sold-material counters
-  - Selling N of a specific drop unlocks new items
-  - Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound")
-- [ ] Shop — buy equipment + consumables from unlocked inventory
-- [ ] Guild / quest board (kill X, gather Y, reach floor Z)
-- [ ] Save/load system (localStorage, Zustand persist middleware)
-- [ ] Autosave at dungeon checkpoints
+**5a — Town Core (done):**
+- [x] Town screen with sub-location navigation (Enter Dungeon, Inn, Shop, Guild, Characters, Party, How to Play) (2026-02-08)
+- [x] Inn: full rest (100% HP/TP) and quick rest (50% HP/TP), cost scales with party level (2026-02-08)
+- [x] Shop — material unlock system with global sold-material counters (2026-02-08)
+- [x] Shop — buy equipment + consumables (Medica, Amrita, Theriaca) from unlocked inventory (2026-02-08)
+- [x] Shop — sell materials tab (2026-02-08)
+- [x] Guild / quest board: 10 quests (kill, gather, explore) with accept/track/claim flow (2026-02-08)
+- ~~Save/load system (Zustand persist middleware to localStorage for party, inventory, quests, game state)~~ — replaced: multi-guild save system in Sprint 13
+- ~~Title screen with Continue (if save exists) / New Game flow~~ — replaced: redesigned title with New Game / Load Game in Sprint 13
+
+**5a-addendum — Inventory UI (done):**
+- [x] Inventory screen accessible from Town — tabbed view (Equipment / Items / Materials) showing all owned items with quantities and "Equipped by" indicators (2026-02-08)
+- [x] Added `'inventory'` to `GameScreen` type, registered in App.tsx router, added button to TownScreen (2026-02-08)
+
+**5b — Save System Redesign (done):**
+- [x] Multi-guild save system: 3 guilds, 3 save slots each, suspend saves for dungeon save & quit (2026-02-08)
+- [x] Save data types (SaveRegistry, GuildEntry, SaveData, SuspendSaveData) in `src/types/save.ts` (2026-02-08)
+- [x] Save system rewrite (`src/systems/save.ts`): registry, guild CRUD, slot CRUD, suspend saves, legacy migration (2026-02-08)
+- [x] Remove Zustand persist middleware from all 4 stores (gameStore, partyStore, inventoryStore, questStore) (2026-02-08)
+- [x] Guild store (`src/stores/guildStore.ts`) for runtime guild context (2026-02-08)
+- [x] Save actions bridge (`src/stores/saveActions.ts`): loadGameState, loadSuspendState, collectGameState, resetAllStores (2026-02-08)
+- [x] Title screen redesign: New Game → guild naming, Load Game → guild/slot picker, auto-migrate legacy saves (2026-02-08)
+- [x] Guild name screen, Load Game screen, Save Game screen (from Inn), ConfirmDialog component (2026-02-08)
+- [x] Dungeon Save & Quit: suspend save from DungeonHUD with confirmation dialog (2026-02-08)
+- [x] Town screen shows guild name (2026-02-08)
+- [x] 30 save system unit tests (2026-02-08)
+
+**5c — Economy & Persistence Gaps (remaining):**
+- [ ] Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound" drops rare material) — drop tables exist but no condition checking
+- [ ] Autosave at dungeon checkpoints (checkpoint tiles exist but don't trigger a save)
+- [ ] Dungeon floor selection from town (currently hardcoded to F1 — should resume last floor or let player choose unlocked floors)
+- [ ] Death penalty design (party wipe returns to town — define what's lost: gold percentage? consumables? nothing?)
+- [ ] Bind-cure consumable (Theriaca cures ailments but not binds — add "Therica B" or similar)
 
 ### Phase 6: Content & Polish
 
 > Fill the first dungeon, balance, tutorial.
 
-- [ ] Full first dungeon: 3-5 floors with increasing difficulty
-- [ ] Enemy roster (8-12 enemy types with varied stats, AI patterns, bind vulnerabilities)
-- [ ] Balance: encounter tables, drop rates, shop unlock recipes, XP curves
-- [ ] Equipment progression for first dungeon
-- [ ] Tutorial / new game flow
-- [ ] Accessibility pass (keyboard nav, screen reader labels, touch targets)
-- [ ] Performance (memoization, lazy loading)
+**6a — First Dungeon Content (done):**
+- [x] Full first dungeon: 3 floors with increasing difficulty (2026-02-08)
+- [x] Enemy roster: 6 types (Slime, Mossy Slime, Fungoid, Sporebat, Crystal Beetle, Caveworm) (2026-02-08)
+- [x] Balance: floor encounter tables, material drops, 8 shop recipes, tiered XP/gold (2026-02-08)
+- [x] Equipment progression: 16 items (8 starter + 8 tier 2 unlocked via F2/F3 materials) (2026-02-08)
+- [x] Enemy AI improvements: aggressive/defensive/random patterns (2026-02-08)
+- [x] 10 quests across F1-F3 (kill, gather, explore) (2026-02-08)
+- [x] Floor transitions: exit → next floor or return to town (2026-02-08)
+- [x] How to Play / Glossary screen — 5-tab reference guide (Controls, Dungeon, Combat, Classes, Glossary) accessible from Town + "?" overlay from Dungeon/Combat HUDs (2026-02-08)
+
+**6b — Combat & AI Depth (remaining):**
+- [ ] Enemy skill usage in AI — enemies currently only basic-attack; give enemies access to their defined skills (binds, displacement, ailments) with weighted selection based on AI pattern
+- [ ] FOE-specific combat encounters (FOEs should be significantly harder, use unique skills, have boss-like behavior)
+- [ ] Boss encounter on Floor 3 (gate the dungeon exit behind a mandatory boss fight)
+- [ ] FOE respawn on floor re-entry (CLAUDE.md specifies this, not implemented)
+- [ ] Combo counter feedback — reward multi-character combos more visibly (sound cue placeholder, screen shake, escalating text size)
+
+**6c — Onboarding & Tutorial (remaining):**
+- [ ] Guided first-run tutorial (separate from How to Play reference):
+  - First town visit: brief walkthrough of Inn/Shop/Guild
+  - First dungeon step: movement controls overlay
+  - First encounter: action menu walkthrough (attack → target → confirm)
+  - First skill: prompt to open Characters screen after first level-up
+- [ ] New Game class introduction (brief intro to each of the 6 blob classes when roster is created)
+
+**6d — Polish & QoL (remaining):**
+- [ ] Accessibility pass (keyboard nav for all menus, ARIA labels on interactive elements, screen reader support for combat events, focus management)
+- [ ] Performance (React.memo on tile components, lazy-load town sub-screens, virtualize long lists like skill trees)
+- [ ] Settings screen (accessible from town and title screen):
+  - Text size toggle (small/medium/large)
+  - Animation speed (normal/fast/instant)
+  - Clear save data with confirmation
+- [ ] Dungeon left-edge viewport clamp bug (white strip when player near left boundary — found in QA Sprint 10)
+- [ ] Minimap size increase (collapsed minimap at 4px/tile is hard to read — increase to 5-6px)
+- [ ] Encounter gauge height increase for mobile visibility
+
+### Phase 7: Second Dungeon & Endgame (post-MVP stretch)
+
+> Extend the game beyond the first dungeon. Only tackle after Phases 4b–6d are complete.
+
+- [ ] Second dungeon: "Frozen Hollows" (3 new floors, new tile types: ice/slide, dark/limited-vision)
+- [ ] 4-6 new enemy types with F4-F6 encounter tables
+- [ ] Tier 3 equipment unlocked via new materials
+- [ ] New quest set for second dungeon
+- [ ] FOE with chase AI pattern (pursues player in line of sight)
+- [ ] Conditional FOE mechanics (e.g. FOE that only moves when player faces away)
+- [ ] Second dungeon boss encounter
+- [ ] Town upgrades (expanded inn services, new shop tiers)
 
 ---
 
@@ -907,6 +977,173 @@ These systems were researched but intentionally excluded from MVP scope:
 **Screenshots:** 23 screenshots saved to `~/Desktop/blob-rpg-screenshots/qa-session/`
 
 **PR:** qa/full-qa-session (branch from main)
+
+### Sprint 11 — How to Play / Glossary (2026-02-08)
+
+**Goal:** Add a tabbed reference guide for new players covering all implemented game systems.
+
+**Tasks:**
+- [x] Add `'how-to-play'` to `GameScreen` type (2026-02-08)
+- [x] Add `helpOpen` boolean + `toggleHelp` action to `gameStore` (2026-02-08)
+- [x] Create help content data files in `src/data/help/` (controls, dungeon, combat, glossary) (2026-02-08)
+- [x] Create `HelpSection` reusable renderer component (2026-02-08)
+- [x] Create `HowToPlayContent` with 5 horizontal tabs: Controls, Dungeon, Combat, Classes, Glossary (2026-02-08)
+- [x] Classes tab dynamically pulls from `getAllClasses()` + `getClassSkills()` registry (2026-02-08)
+- [x] Glossary tab with 24 alphabetical game term definitions (2026-02-08)
+- [x] Create `HowToPlayScreen` full-screen wrapper (Town entry point) (2026-02-08)
+- [x] Create `HelpOverlay` absolute overlay wrapper (Dungeon/Combat entry point) (2026-02-08)
+- [x] Create `HelpButton` ("?") component for HUD integration (2026-02-08)
+- [x] Add "How to Play" button to TownScreen (2026-02-08)
+- [x] Add `HelpButton` to DungeonHUD (next to Town button) (2026-02-08)
+- [x] Add `HelpButton` to CombatHUD (right end) (2026-02-08)
+- [x] Register `HowToPlayScreen` in App.tsx screens map (2026-02-08)
+- [x] Render `HelpOverlay` conditionally in App.tsx when `helpOpen === true` (2026-02-08)
+
+**Test Coverage:**
+- 341 tests still passing (no regressions)
+- Build verified clean (`tsc -b && vite build`)
+
+**Files Created (10):**
+- `src/data/help/types.ts` — `HelpEntry` and `GlossaryEntry` interfaces
+- `src/data/help/controls.ts` — 3 sections (movement, combat controls, minimap)
+- `src/data/help/dungeon.ts` — 4 sections (encounter gauge, FOEs, fog, checkpoints)
+- `src/data/help/combat.ts` — 8 sections (turn order, grid, actions, displacement, combos, traps, binds, ailments)
+- `src/data/help/glossary.ts` — 24 alphabetical terms (AGI through XP)
+- `src/components/help/HelpSection.tsx` — Reusable section renderer
+- `src/components/help/HelpButton.tsx` — "?" icon button wired to `toggleHelp`
+- `src/components/help/HowToPlayContent.tsx` — 5-tab content component
+- `src/components/help/HowToPlayScreen.tsx` — Full screen wrapper (Town entry)
+- `src/components/help/HelpOverlay.tsx` — Overlay wrapper (Dungeon/Combat entry)
+
+**Files Modified (6):**
+- `src/types/game.ts` — Added `'how-to-play'` to `GameScreen`
+- `src/stores/gameStore.ts` — Added `helpOpen` + `toggleHelp`
+- `src/App.tsx` — Registered `HowToPlayScreen`, renders `HelpOverlay` conditionally
+- `src/components/town/TownScreen.tsx` — Added "How to Play" button
+- `src/components/dungeon/DungeonHUD.tsx` — Added `HelpButton` next to Town button
+- `src/components/combat/CombatHUD.tsx` — Added `HelpButton` at right end
+
+**PR:** #12 — feat/help-screen (branch from main)
+
+### Sprint 12 — Equipment Picker & Inventory Screen (2026-02-08)
+
+**Goal:** Fix two related bugs — equipment slots do nothing when tapped (#14), and there's no way to view owned items (#15).
+
+**Tasks:**
+
+**Equipment Picker (fixes #14):**
+- [x] Create `EquipmentPicker` component — inline panel below tapped slot (2026-02-08)
+- [x] Filter owned items by slot type (weapons for weapon slot, accessories interchangeable between acc1/acc2) (2026-02-08)
+- [x] Track duplicates — if you own 2 of the same item and 1 is equipped elsewhere, only 1 shows available (2026-02-08)
+- [x] Wire `onSlotTap` in CharacterSheet (was empty no-op) to toggle picker (2026-02-08)
+- [x] Equip calls `partyStore.equipItem()` → stats recalculate with equipment bonuses (2026-02-08)
+- [x] Unequip option shown when item is currently equipped (2026-02-08)
+- [x] Current item marked with "(equipped)" label + gray background (2026-02-08)
+
+**Inventory Screen (fixes #15):**
+- [x] Create `InventoryScreen` component with 3 tabs: Equipment, Items (consumables), Materials (2026-02-08)
+- [x] Equipment tab shows owned items with descriptions and "Equipped by: [name]" indicators (2026-02-08)
+- [x] Items tab shows consumables with quantities (2026-02-08)
+- [x] Materials tab shows gathered materials with quantities (2026-02-08)
+- [x] Gold display in header (2026-02-08)
+- [x] Empty state messages for each tab (2026-02-08)
+- [x] Add `'inventory'` to `GameScreen` type, register in App.tsx, add button to TownScreen (2026-02-08)
+
+**Test Coverage:**
+- 354 tests passing (no regressions)
+- Build verified clean (`tsc -b && vite build`)
+- Visual testing with agent-browser: buy from shop → view in inventory → equip on character → verify stat change → unequip → verify revert
+
+**Files Created (2):**
+- `src/components/character/EquipmentPicker.tsx` — Inline equipment selection panel
+- `src/components/town/InventoryScreen.tsx` — Tabbed inventory viewer
+
+**Files Modified (4):**
+- `src/components/character/CharacterSheet.tsx` — Wired `onSlotTap` to EquipmentPicker
+- `src/App.tsx` — Registered InventoryScreen in screens map
+- `src/components/town/TownScreen.tsx` — Added Inventory button
+- `src/types/game.ts` — Added `'inventory'` to GameScreen union
+
+**Screenshots:** 12 screenshots saved to `~/Desktop/blob-rpg-screenshots/` (01-12 series)
+
+**PR:** #18 — fix/equip-inventory-ui (branch from main, git worktree)
+
+### Sprint 13 — Multi-Guild Save System (2026-02-08)
+
+**Goal:** Replace Zustand persist middleware with an explicit multi-guild save system supporting named guilds, multiple save slots, dungeon suspend saves, and legacy data migration. Resolves issue #13.
+
+**Tasks:**
+
+**Types & Architecture:**
+- [x] Create `src/types/save.ts` with SaveRegistry, GuildEntry, GuildSlotIndex, SlotMeta, SaveData, SuspendSaveData interfaces (2026-02-08)
+- [x] Add `'guild-name' | 'load-game' | 'save-game'` to `GameScreen` type (2026-02-08)
+
+**Save System Rewrite (`src/systems/save.ts`):**
+- [x] Registry API: `getRegistry()`, `saveRegistry()`, `hasAnyGuilds()` (2026-02-08)
+- [x] Guild CRUD: `createGuild()`, `deleteGuild()`, `updateGuildLastPlayed()` — max 3 guilds (2026-02-08)
+- [x] Slot API: `saveToSlot()`, `loadSlot()`, `deleteSlot()`, `getSlotIndex()` — max 3 slots per guild (2026-02-08)
+- [x] Suspend API: `saveSuspend()`, `loadAndDeleteSuspend()`, `hasSuspendSave()` — one-shot, deleted on load (2026-02-08)
+- [x] Legacy migration: `migrateLegacySaves()`, `hasLegacySaveData()`, `clearLegacyKeys()` — unwraps Zustand persist envelope, creates "Legacy Guild" (2026-02-08)
+
+**Store Changes:**
+- [x] Remove `persist` middleware from gameStore, partyStore, inventoryStore, questStore (2026-02-08)
+- [x] Create `src/stores/guildStore.ts` — runtime guild context (currentGuildId, currentGuildName, lastLoadedSlotId) (2026-02-08)
+- [x] Create `src/stores/saveActions.ts` — bridge functions: loadGameState, loadSuspendState, collectGameState, collectSuspendState, resetAllStores (2026-02-08)
+- [x] Add `saveAndQuit` action to dungeonStore — creates suspend save, clears dungeon, returns to title (2026-02-08)
+
+**New UI Screens:**
+- [x] `GuildNameScreen` — text input for guild name + Begin/Back buttons (2026-02-08)
+- [x] `LoadGameScreen` — two-step: guild list → slot list, with suspend save highlight and delete guild option (2026-02-08)
+- [x] `SaveGameScreen` — slot picker from Inn, overwrite confirmation, delete slot, brief "Saved!" feedback (2026-02-08)
+- [x] `ConfirmDialog` — reusable confirmation modal (2026-02-08)
+
+**Existing Screen Modifications:**
+- [x] `TitleScreen` — redesigned: New Game → guild-name, Load Game → load-game, auto-migrates legacy saves in useState initializer (2026-02-08)
+- [x] `TownScreen` — shows guild name below heading (2026-02-08)
+- [x] `InnScreen` — added "Save Game" button (only when guild is active) (2026-02-08)
+- [x] `DungeonHUD` — added "Save" button with confirmation dialog for Save & Quit (2026-02-08)
+- [x] `DungeonScreen` — passes `saveAndQuit` to DungeonHUD (2026-02-08)
+- [x] `App.tsx` — registered 3 new screens (guild-name, load-game, save-game) (2026-02-08)
+
+**Tests:**
+- [x] 30 new save system tests covering registry, guild CRUD, slot CRUD, suspend saves, legacy migration (2026-02-08)
+- [x] All 384 tests passing (354 existing + 30 new) (2026-02-08)
+
+**localStorage Key Structure:**
+```
+blob-rpg-registry                       → SaveRegistry (guild index)
+blob-rpg-guild-<id>-slots               → GuildSlotIndex (slot metadata)
+blob-rpg-guild-<id>-slot-<slotId>       → SaveData (full game snapshot)
+blob-rpg-guild-<id>-suspend             → SuspendSaveData (dungeon save & quit)
+```
+
+**Files Created (8):**
+- `src/types/save.ts` — Save data schema and constants
+- `src/systems/save.ts` — Complete save system rewrite (was 25 lines, now 366)
+- `src/systems/save.test.ts` — 30 unit tests
+- `src/stores/guildStore.ts` — Runtime guild context
+- `src/stores/saveActions.ts` — Load/collect/reset bridge
+- `src/components/ui/GuildNameScreen.tsx` — Guild name input
+- `src/components/ui/LoadGameScreen.tsx` — Guild/slot picker
+- `src/components/town/SaveGameScreen.tsx` — Inn save slot picker
+- `src/components/ui/ConfirmDialog.tsx` — Reusable confirm modal
+
+**Files Modified (13):**
+- `src/types/game.ts` — Added 3 new screen types
+- `src/stores/gameStore.ts` — Removed persist
+- `src/stores/partyStore.ts` — Removed persist
+- `src/stores/inventoryStore.ts` — Removed persist
+- `src/stores/questStore.ts` — Removed persist
+- `src/stores/dungeonStore.ts` — Added saveAndQuit
+- `src/App.tsx` — Registered 3 new screens
+- `src/components/ui/TitleScreen.tsx` — Redesigned with guild flow
+- `src/components/town/TownScreen.tsx` — Shows guild name
+- `src/components/town/InnScreen.tsx` — Added Save Game button
+- `src/components/dungeon/DungeonHUD.tsx` — Added Save & Quit button
+- `src/components/dungeon/DungeonScreen.tsx` — Passes saveAndQuit to HUD
+- `plans/plan.md` — Sprint log + Phase 5b update
+
+**PR:** #20 — feat/save-system (branch from main, git worktree)
 
 ---
 

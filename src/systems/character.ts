@@ -12,6 +12,7 @@ import type {
   EquipmentDefinition,
   EquipmentBonuses,
   LevelUpResult,
+  PassiveModifier,
 } from '../types/character';
 
 // ============================================================================
@@ -122,6 +123,54 @@ export function processLevelUps(
 }
 
 // ============================================================================
+// Passive Skill Bonuses
+// ============================================================================
+
+/** Skill lookup function signature */
+export type SkillLookup = (id: string) => SkillDefinition;
+
+/**
+ * Get flat stat bonuses from learned passive skills.
+ * Returns an EntityStats-shaped object with additive bonuses.
+ */
+export function getPassiveStatBonuses(
+  learnedSkills: string[],
+  skillLookup: SkillLookup
+): EntityStats {
+  const bonuses: EntityStats = { str: 0, vit: 0, int: 0, wis: 0, agi: 0, luc: 0 };
+
+  for (const skillId of learnedSkills) {
+    const skill = skillLookup(skillId);
+    if (!skill?.isPassive || !skill.passiveModifier) continue;
+    const mod = skill.passiveModifier;
+    if (mod.type === 'flat-stat') {
+      bonuses[mod.stat] += mod.amount;
+    }
+  }
+
+  return bonuses;
+}
+
+/**
+ * Get all PassiveModifier objects from learned passive skills.
+ * Used by combat system for non-stat passives (bind duration, poison damage).
+ */
+export function getPassiveModifiers(
+  learnedSkills: string[],
+  skillLookup: SkillLookup
+): PassiveModifier[] {
+  const modifiers: PassiveModifier[] = [];
+
+  for (const skillId of learnedSkills) {
+    const skill = skillLookup(skillId);
+    if (!skill?.isPassive || !skill.passiveModifier) continue;
+    modifiers.push(skill.passiveModifier);
+  }
+
+  return modifiers;
+}
+
+// ============================================================================
 // Stat Calculation
 // ============================================================================
 
@@ -142,13 +191,14 @@ export function calculateBaseStats(classData: ClassDefinition, level: number): E
 }
 
 /**
- * Calculate effective stats from base stats + equipment bonuses.
+ * Calculate effective stats from base stats + equipment bonuses + passive bonuses.
  */
 export function calculateEffectiveStats(
   baseStats: EntityStats,
-  equipment: EquipmentDefinition[]
+  equipment: EquipmentDefinition[],
+  passiveBonuses?: EntityStats
 ): EntityStats {
-  const bonuses = equipment.reduce(
+  const eqBonuses = equipment.reduce(
     (acc, eq) => ({
       str: acc.str + (eq.bonuses.str ?? 0),
       vit: acc.vit + (eq.bonuses.vit ?? 0),
@@ -160,13 +210,15 @@ export function calculateEffectiveStats(
     { str: 0, vit: 0, int: 0, wis: 0, agi: 0, luc: 0 }
   );
 
+  const pb = passiveBonuses ?? { str: 0, vit: 0, int: 0, wis: 0, agi: 0, luc: 0 };
+
   return {
-    str: baseStats.str + bonuses.str,
-    vit: baseStats.vit + bonuses.vit,
-    int: baseStats.int + bonuses.int,
-    wis: baseStats.wis + bonuses.wis,
-    agi: baseStats.agi + bonuses.agi,
-    luc: baseStats.luc + bonuses.luc,
+    str: baseStats.str + eqBonuses.str + pb.str,
+    vit: baseStats.vit + eqBonuses.vit + pb.vit,
+    int: baseStats.int + eqBonuses.int + pb.int,
+    wis: baseStats.wis + eqBonuses.wis + pb.wis,
+    agi: baseStats.agi + eqBonuses.agi + pb.agi,
+    luc: baseStats.luc + eqBonuses.luc + pb.luc,
   };
 }
 
@@ -198,14 +250,18 @@ export function calculateMaxTp(
 
 /**
  * Recalculate all derived fields on a party member.
- * Call after equipping/unequipping or leveling up.
+ * Call after equipping/unequipping, leveling up, or learning a skill.
  */
 export function recalculatePartyMember(
   member: PartyMemberState,
   classData: ClassDefinition,
-  equipment: EquipmentDefinition[]
+  equipment: EquipmentDefinition[],
+  skillLookup?: SkillLookup
 ): PartyMemberState {
-  const newStats = calculateEffectiveStats(member.baseStats, equipment);
+  const passiveBonuses = skillLookup
+    ? getPassiveStatBonuses(member.learnedSkills, skillLookup)
+    : undefined;
+  const newStats = calculateEffectiveStats(member.baseStats, equipment, passiveBonuses);
   const newMaxHp = calculateMaxHp(classData, member.level, equipment);
   const newMaxTp = calculateMaxTp(classData, member.level, equipment);
 

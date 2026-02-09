@@ -36,6 +36,7 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'multi-hit', stat: 'str', hits: 3, multiplierPerHit: 0.4 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'strikblob-pull-slash',
@@ -52,6 +53,7 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'displacement', direction: 'pull', distance: 1 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'strikblob-viper-fang',
@@ -68,6 +70,7 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'ailment', ailmentType: 'poison', chance: 60, damagePerTurn: 3, duration: 3 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'strikblob-combat-instinct',
@@ -79,10 +82,10 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'agi', amount: 3, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'flat-stat', stat: 'agi', amount: 3 },
+    category: 'passive',
   },
   {
     id: 'strikblob-exploit-weakness',
@@ -98,6 +101,7 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'str', multiplier: 1.5, condition: { type: 'has-any-bind' }, perBindMultiplier: true },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'strikblob-blade-dance',
@@ -113,5 +117,6 @@ export const STRIKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'damage', stat: 'str', multiplier: 1.0 },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];

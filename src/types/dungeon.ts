@@ -35,6 +35,22 @@ export interface FoeSpawnData {
   readonly name: string
 }
 
+/** Weighted enemy entry for encounter tables */
+export interface EncounterTableEntry {
+  readonly enemyId: string
+  readonly weight: number
+}
+
+/** Per-floor encounter table defining which enemies appear */
+export interface FloorEncounterTable {
+  readonly random: EncounterTableEntry[]
+  readonly foe: EncounterTableEntry[]
+  /** [min, max] number of enemies per random encounter */
+  readonly randomSize: [number, number]
+  /** [min, max] number of enemies per FOE encounter */
+  readonly foeSize: [number, number]
+}
+
 /** Static definition of a dungeon floor */
 export interface FloorData {
   readonly id: string // e.g. "verdant-depths-f1"
@@ -50,6 +66,10 @@ export interface FloorData {
   readonly encounterRate: number
   /** Min/max random variance added to encounterRate per step */
   readonly encounterVariance: [number, number]
+  /** Floor-specific encounter pools. If absent, fallback to slime-only. */
+  readonly encounterTable?: FloorEncounterTable
+  /** ID of the next floor reached via exit. null = dungeon complete. */
+  readonly nextFloorId?: string | null
 }
 
 // ---- Fog of war ----

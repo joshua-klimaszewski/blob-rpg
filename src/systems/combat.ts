@@ -39,9 +39,11 @@ import type {
   FleeSuccessEvent,
   FleeFailedEvent,
   CombatRewards,
+  EnemyDefinition,
 } from '../types/combat';
 
 import type { SkillDefinition, SkillEffect } from '../types/character';
+import type { ConsumableDefinition } from '../types/economy';
 
 // ============================================================================
 // Random Number Generator (Injectable for Testing)
@@ -318,6 +320,47 @@ export function advanceTurn(state: CombatState): CombatState {
     turnOrder: state.turnOrder.map((entry, idx) => ({
       ...entry,
       hasActed: idx === newIndex ? false : entry.hasActed,
+    })),
+  };
+}
+
+/**
+ * Advance to the next ALIVE actor in turn order.
+ * Skips dead actors atomically (no cascading setTimeout chains).
+ * Increments round if we wrap past index 0.
+ */
+export function advanceToNextAlive(state: CombatState): CombatState {
+  const len = state.turnOrder.length;
+  if (len === 0) return state;
+
+  let idx = (state.currentActorIndex + 1) % len;
+  let wrapped = idx <= state.currentActorIndex;
+  let checks = 0;
+
+  // Walk forward until we find an alive actor or exhaust the list
+  while (checks < len) {
+    const entry = state.turnOrder[idx];
+    const entity = findEntity(state, entry.entityId);
+    if (entity && isAlive(entity)) break;
+
+    idx = (idx + 1) % len;
+    if (idx === 0) wrapped = true;
+    checks++;
+  }
+
+  // If all actors are dead (shouldn't happen — victory/defeat checks first),
+  // fall back to simple advance so we don't infinite-loop
+  if (checks >= len) {
+    return advanceTurn(state);
+  }
+
+  return {
+    ...state,
+    currentActorIndex: idx,
+    round: wrapped ? state.round + 1 : state.round,
+    turnOrder: state.turnOrder.map((entry, i) => ({
+      ...entry,
+      hasActed: i === idx ? false : entry.hasActed,
     })),
   };
 }
@@ -984,6 +1027,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
   const party: CombatEntity[] = encounter.party.map((member) => ({
     id: member.id,
     name: member.name,
+    definitionId: member.classId,
     hp: member.hp,
     maxHp: member.maxHp,
     tp: member.tp,
@@ -1009,6 +1053,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     isParty: true,
     skills: member.learnedSkills,
     buffs: [],
+    passiveModifiers: [],
   }));
 
   // Create enemy entities and place on grid
@@ -1019,6 +1064,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     const enemy: CombatEntity = {
       id: placement.instanceId,
       name: placement.definition.name,
+      definitionId: placement.definition.id,
       hp: placement.definition.maxHp,
       maxHp: placement.definition.maxHp,
       tp: placement.definition.maxTp,
@@ -1044,6 +1090,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
       isParty: false,
       skills: placement.definition.skills,
       buffs: [],
+      passiveModifiers: [],
     };
 
     enemies.push(enemy);
@@ -1168,6 +1215,62 @@ export function executeFlee(state: CombatState, rng: RNG = defaultRNG): ActionRe
 }
 
 /**
+ * Execute an item action (use consumable on ally)
+ */
+export function executeItemAction(
+  state: CombatState,
+  actorId: string,
+  targetId: string,
+  consumable: ConsumableDefinition,
+): ActionResult {
+  const actor = findEntity(state, actorId);
+  const target = findEntity(state, targetId);
+  if (!actor || !target) return { state, events: [] };
+
+  const events: CombatEventUnion[] = [];
+  let newState = state;
+
+  switch (consumable.effect.type) {
+    case 'heal-hp': {
+      const healAmount = Math.min(consumable.effect.amount, target.maxHp - target.hp);
+      const healed: CombatEntity = { ...target, hp: target.hp + healAmount };
+      newState = updateEntity(newState, targetId, healed);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: healAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'heal-tp': {
+      const tpAmount = Math.min(consumable.effect.amount, target.maxTp - target.tp);
+      const restored: CombatEntity = { ...target, tp: target.tp + tpAmount };
+      newState = updateEntity(newState, targetId, restored);
+      const event: HealEvent = {
+        type: 'heal',
+        targetId,
+        amount: tpAmount,
+        timestamp: Date.now(),
+      };
+      events.push(event);
+      break;
+    }
+    case 'cure-ailments': {
+      const cured: CombatEntity = {
+        ...target,
+        ailments: { poison: null, paralyze: null, sleep: null, blind: null },
+      };
+      newState = updateEntity(newState, targetId, cured);
+      break;
+    }
+  }
+
+  return { state: newState, events };
+}
+
+/**
  * Execute a combat action
  * Routes to specific action handlers, checks victory/defeat, advances turn
  */
@@ -1209,9 +1312,11 @@ export function executeAction(
       break;
     }
 
-    case 'item':
-      // MVP: Not implemented yet
+    case 'item': {
+      // Item actions are handled directly by the store (which calls executeItemAction)
+      // since they need consumable lookup and inventory deduction
       return { state, events: [] };
+    }
 
     default:
       return { state, events: [] };
@@ -1254,38 +1359,81 @@ export function executeAction(
 }
 
 /**
- * Execute an enemy's turn.
- * 60% basic attack, 40% random available skill.
+ * Execute an enemy's turn with AI pattern-based behavior.
+ *
+ * AI Patterns:
+ * - aggressive: 50% skill chance, prefer damage skills, target lowest-HP party member
+ * - defensive: 30% skill chance, prefer buff/bind skills, 20% chance to defend
+ * - random: 40% skill chance, random target (legacy behavior)
+ *
  * Party members aren't on the grid, so enemies attack them directly.
  */
 export function executeEnemyTurn(
   state: CombatState,
   actorId: string,
   rng: RNG = defaultRNG,
-  skillLookup?: (id: string) => SkillDefinition
+  skillLookup?: (id: string) => SkillDefinition,
+  getEnemyDef?: (id: string) => EnemyDefinition | undefined,
 ): ActionResult {
   const actor = findEntity(state, actorId);
   if (!actor || !isAlive(actor) || actor.isParty) {
     return { state, events: [] };
   }
 
-  // Try to use a skill (40% chance if skills available)
-  if (skillLookup && actor.skills.length > 0 && rng() < 0.4) {
+  // Determine AI pattern from enemy definition
+  const enemyDef = getEnemyDef?.(actor.definitionId);
+  const aiPattern = enemyDef?.aiPattern ?? 'random';
+
+  // Determine skill usage chance based on AI pattern
+  const skillChance = aiPattern === 'aggressive' ? 0.5
+    : aiPattern === 'defensive' ? 0.3
+    : 0.4;
+
+  // Defensive enemies have a 20% chance to defend instead
+  if (aiPattern === 'defensive' && rng() < 0.2) {
+    const defendResult = executeDefend(state, actorId);
+    const newTurnOrder = defendResult.state.turnOrder.map((entry) =>
+      entry.entityId === actorId ? { ...entry, hasActed: true } : entry
+    );
+    return {
+      state: { ...defendResult.state, turnOrder: newTurnOrder },
+      events: defendResult.events,
+    };
+  }
+
+  // Try to use a skill
+  if (skillLookup && actor.skills.length > 0 && rng() < skillChance) {
     const usableSkills = actor.skills
       .map((id) => skillLookup(id))
       .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
       .filter((s) => canUseSkill(actor, s).canUse);
 
     if (usableSkills.length > 0) {
-      const skill = usableSkills[Math.floor(rng() * usableSkills.length)];
+      let skill: SkillDefinition;
 
-      // Pick a target tile — for enemy skills targeting tiles, pick a random
-      // occupied tile or just [0,0] for party-targeting skills
+      if (aiPattern === 'aggressive') {
+        // Prefer damage skills
+        const damageSkills = usableSkills.filter((s) =>
+          s.effects.some((e) => e.type === 'damage' || e.type === 'multi-hit' || e.type === 'aoe-splash')
+        );
+        skill = damageSkills.length > 0
+          ? damageSkills[Math.floor(rng() * damageSkills.length)]
+          : usableSkills[Math.floor(rng() * usableSkills.length)];
+      } else if (aiPattern === 'defensive') {
+        // Prefer buff/bind/ailment skills
+        const supportSkills = usableSkills.filter((s) =>
+          s.effects.some((e) => e.type === 'self-buff' || e.type === 'bind' || e.type === 'ailment')
+        );
+        skill = supportSkills.length > 0
+          ? supportSkills[Math.floor(rng() * supportSkills.length)]
+          : usableSkills[Math.floor(rng() * usableSkills.length)];
+      } else {
+        skill = usableSkills[Math.floor(rng() * usableSkills.length)];
+      }
+
       const targetTile: GridPosition = actor.position ?? [1, 1];
-
       const skillResult = executeSkillAction(state, actorId, skill.id, targetTile, rng, skillLookup);
 
-      // Mark actor as having acted
       const newTurnOrder = skillResult.state.turnOrder.map((entry) =>
         entry.entityId === actorId ? { ...entry, hasActed: true } : entry
       );
@@ -1303,8 +1451,18 @@ export function executeEnemyTurn(
     return { state, events: [] };
   }
 
-  const targetIndex = Math.floor(rng() * aliveParty.length);
-  const target = aliveParty[targetIndex];
+  // Target selection based on AI pattern
+  let target: CombatEntity;
+  if (aiPattern === 'aggressive') {
+    // Target lowest-HP party member
+    target = aliveParty.reduce((lowest, m) =>
+      m.hp < lowest.hp ? m : lowest
+    );
+  } else {
+    // Random target
+    const targetIndex = Math.floor(rng() * aliveParty.length);
+    target = aliveParty[targetIndex];
+  }
 
   // Check if defender is defending
   const targetTurnEntry = state.turnOrder.find((e) => e.entityId === target.id);
@@ -1583,9 +1741,13 @@ function processSkillEffect(
         for (const id of entityIds) {
           const target = findEntity(newState, id);
           if (!target || !isAlive(target)) continue;
+          // Apply bind-duration-bonus from actor's passives
+          const durationBonus = actor.passiveModifiers
+            .filter((m) => m.type === 'bind-duration-bonus')
+            .reduce((sum, m) => sum + m.amount, 0);
           const bindApp: BindApplication = {
             type: effect.bindType,
-            baseDuration: effect.duration,
+            baseDuration: effect.duration + durationBonus,
             baseChance: effect.chance,
           };
           const bindResult = applyBind(target, bindApp, rng);
@@ -1629,9 +1791,14 @@ function processSkillEffect(
 
           let ailmentData: AilmentData;
           switch (effect.ailmentType) {
-            case 'poison':
-              ailmentData = { type: 'poison', damagePerTurn: effect.damagePerTurn ?? 3, turnsRemaining: effect.duration };
+            case 'poison': {
+              // Apply poison-damage-bonus from actor's passives
+              const poisonBonus = actor.passiveModifiers
+                .filter((m) => m.type === 'poison-damage-bonus')
+                .reduce((sum, m) => sum + m.amount, 0);
+              ailmentData = { type: 'poison', damagePerTurn: (effect.damagePerTurn ?? 3) + poisonBonus, turnsRemaining: effect.duration };
               break;
+            }
             case 'paralyze':
               ailmentData = { type: 'paralyze', skipChance: 50, turnsRemaining: effect.duration };
               break;
@@ -1923,19 +2090,43 @@ export function tickBuffs(entity: CombatEntity): CombatEntity {
 /**
  * Calculate combat rewards after victory
  */
-export function calculateRewards(state: CombatState): CombatRewards {
-  // MVP: Fixed 100 XP, no material drops
-  let totalXp = 100;
+export function calculateRewards(
+  state: CombatState,
+  rng: RNG = defaultRNG,
+  getEnemyDef?: (id: string) => EnemyDefinition | undefined,
+): CombatRewards {
+  let totalXp = 0;
+  let totalGold = 0;
+  const materialCounts: Record<string, number> = {};
 
-  // Add XP from defeated enemies
   for (const enemy of state.enemies) {
     if (!isAlive(enemy)) {
-      totalXp += 20; // MVP: fixed 20 XP per enemy
+      // Look up the enemy definition for drop data
+      const def = getEnemyDef?.(enemy.definitionId);
+      if (def) {
+        totalXp += def.dropTable.xp;
+        const { min, max } = def.dropTable.gold;
+        totalGold += min + Math.floor(rng() * (max - min + 1));
+
+        for (const drop of def.dropTable.materials) {
+          if (rng() < drop.chance) {
+            materialCounts[drop.materialId] = (materialCounts[drop.materialId] ?? 0) + 1;
+          }
+        }
+      } else {
+        // Fallback if no definition found
+        totalXp += 20;
+        totalGold += 10;
+      }
     }
   }
 
+  const materials = Object.entries(materialCounts).map(([id, quantity]) => ({ id, quantity }));
+
   return {
     xp: totalXp,
-    materials: [],
+    gold: totalGold,
+    materials,
+    levelUps: [],
   };
 }

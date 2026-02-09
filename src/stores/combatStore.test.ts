@@ -16,7 +16,7 @@ function createTestEnemyDefinition(overrides?: Partial<EnemyDefinition>): EnemyD
     maxTp: 10,
     skills: [],
     aiPattern: 'aggressive',
-    dropTable: { materials: [], xp: 20 },
+    dropTable: { materials: [], xp: 20, gold: { min: 5, max: 15 } },
     ...overrides,
   };
 }

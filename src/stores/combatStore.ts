@@ -17,23 +17,29 @@ import {
   initializeCombat,
   executeAction,
   executeEnemyTurn,
-  advanceTurn,
+  advanceToNextAlive,
   calculateRewards,
   defaultRNG,
 } from '../systems/combat';
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
+import { useInventoryStore } from './inventoryStore';
+import { useQuestStore } from './questStore';
+import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
 import type { SkillDefinition } from '../types/character';
+import { getPassiveModifiers } from '../systems/character';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
 function lookupSkill(id: string): SkillDefinition {
-  const playerSkill = getSkill(id);
-  if (playerSkill) return playerSkill;
+  try {
+    return getSkill(id);
+  } catch {
+    // Not a player skill — check enemy skills
+  }
   const enemySkill = getEnemySkill(id);
   if (enemySkill) return enemySkill;
-  // Fallback — should not happen if data is consistent
   throw new Error(`Unknown skill ID: ${id}`);
 }
 
@@ -53,14 +59,11 @@ interface CombatStore {
   /** Start a new combat encounter */
   startCombat: (encounter: EncounterData) => void;
 
-  /** Execute a combat action */
+  /** Execute a combat action and atomically advance to the next actor */
   selectAction: (action: Action) => void;
 
-  /** Process an enemy's turn automatically */
-  processEnemyTurn: () => void;
-
-  /** Advance to the next actor in turn order */
-  advanceToNext: () => void;
+  /** Process an enemy's turn and advance to the next actor atomically */
+  processEnemyTurnAndAdvance: () => void;
 
   /** End combat and return to previous screen */
   endCombat: () => void;
@@ -71,12 +74,55 @@ interface CombatStore {
 
 function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
   if (state.phase === 'victory') {
-    const rewards = calculateRewards(state);
-    useCombatStore.setState({ rewards });
+    const rewards = calculateRewards(state, defaultRNG, getEnemy);
+
+    // Snapshot pre-XP levels for level-up detection
+    const partyStore = usePartyStore.getState();
+    const preLevels = new Map<string, { level: number; name: string }>();
+    for (const member of partyStore.getActiveParty()) {
+      preLevels.set(member.id, { level: member.level, name: member.name });
+    }
 
     // Award XP and sync HP/TP to party store
-    usePartyStore.getState().awardXp(rewards.xp);
+    partyStore.awardXp(rewards.xp);
     usePartyStore.getState().syncHpTpFromCombat(state.party);
+
+    // Detect level-ups by comparing pre/post levels
+    const postParty = usePartyStore.getState().getActiveParty();
+    const levelUps: CombatRewards['levelUps'] = [];
+    for (const member of postParty) {
+      const pre = preLevels.get(member.id);
+      if (pre && member.level > pre.level) {
+        levelUps.push({
+          memberId: member.id,
+          name: pre.name,
+          oldLevel: pre.level,
+          newLevel: member.level,
+        });
+      }
+    }
+    rewards.levelUps = levelUps;
+
+    useCombatStore.setState({ rewards });
+
+    // Award gold and materials to inventory
+    const inventory = useInventoryStore.getState();
+    inventory.addGold(rewards.gold);
+    for (const mat of rewards.materials) {
+      inventory.addMaterial(mat.id, mat.quantity);
+    }
+
+    // Track kill quest progress (count defeated enemies by type)
+    const questStore = useQuestStore.getState();
+    const killCounts: Record<string, number> = {};
+    for (const enemy of state.enemies) {
+      if (enemy.hp <= 0) {
+        killCounts[enemy.definitionId] = (killCounts[enemy.definitionId] ?? 0) + 1;
+      }
+    }
+    for (const [enemyId, count] of Object.entries(killCounts)) {
+      questStore.incrementKillProgress(enemyId, count);
+    }
 
     setTimeout(() => {
       get().endCombat();
@@ -100,8 +146,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
   startCombat: (encounter) => {
     const combat = initializeCombat(encounter);
 
+    // Inject passive modifiers from learned skills into party combat entities
+    const partyWithPassives = combat.party.map((entity) => {
+      const member = encounter.party.find((m) => m.id === entity.id);
+      if (!member) return entity;
+      const modifiers = getPassiveModifiers(member.learnedSkills, lookupSkill);
+      return { ...entity, passiveModifiers: modifiers };
+    });
+
     set({
-      combat,
+      combat: { ...combat, party: partyWithPassives },
       encounter,
       lastEvents: [],
       rewards: null,
@@ -113,41 +167,47 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   selectAction: (action) => {
     const { combat } = get();
-    if (!combat) return;
+    if (!combat || combat.phase !== 'active') return;
 
     const result = executeAction(combat, action, defaultRNG, lookupSkill);
 
-    set({
-      combat: result.state,
-      lastEvents: result.events,
-    });
+    // If phase changed (victory/defeat/fled), don't advance turn
+    if (result.state.phase !== 'active') {
+      set({ combat: result.state, lastEvents: result.events });
+      handlePhaseTransition(get, result.state);
+      return;
+    }
 
-    handlePhaseTransition(get, result.state);
+    // Atomically execute action AND advance to next alive actor in one set()
+    const advanced = advanceToNextAlive(result.state);
+    set({ combat: advanced, lastEvents: result.events });
   },
 
-  processEnemyTurn: () => {
+  processEnemyTurnAndAdvance: () => {
     const { combat } = get();
     if (!combat || combat.phase !== 'active') return;
 
     const currentEntry = combat.turnOrder[combat.currentActorIndex];
     if (!currentEntry) return;
 
-    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill);
+    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill, getEnemy);
 
+    // If phase changed (victory/defeat), don't advance turn
+    if (result.state.phase !== 'active') {
+      set({
+        combat: result.state,
+        lastEvents: result.events,
+      });
+      handlePhaseTransition(get, result.state);
+      return;
+    }
+
+    // Atomically apply enemy action AND advance to next alive actor in one set() call
+    const advanced = advanceToNextAlive(result.state);
     set({
-      combat: result.state,
+      combat: advanced,
       lastEvents: result.events,
     });
-
-    handlePhaseTransition(get, result.state);
-  },
-
-  advanceToNext: () => {
-    const { combat } = get();
-    if (!combat || combat.phase !== 'active') return;
-
-    const newState = advanceTurn(combat);
-    set({ combat: newState });
   },
 
   endCombat: () => {

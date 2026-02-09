@@ -6,17 +6,20 @@ import type { SelectedAction } from './ActionMenu';
 import { SkillList } from './SkillList';
 import { CombatHUD } from './CombatHUD';
 import { TurnOrderTimeline } from './TurnOrderTimeline';
+import { ItemMenu } from './ItemMenu';
 import { useCombatEvents } from '../../hooks/useCombatEvents';
+import { useInventoryStore } from '../../stores/inventoryStore';
 import { findEntity, isAlive } from '../../systems/combat';
 import { getSkill } from '../../data/classes/index';
+import { getAllConsumables } from '../../data/items/index';
 import type { SkillDefinition } from '../../types/character';
 import type { GridPosition } from '../../types/combat';
 
 export function CombatScreen() {
   const combat = useCombatStore((s) => s.combat);
+  const rewards = useCombatStore((s) => s.rewards);
   const selectAction = useCombatStore((s) => s.selectAction);
-  const processEnemyTurn = useCombatStore((s) => s.processEnemyTurn);
-  const advanceToNext = useCombatStore((s) => s.advanceToNext);
+  const processEnemyTurnAndAdvance = useCombatStore((s) => s.processEnemyTurnAndAdvance);
 
   const { damageDisplays, message, removeDamage } = useCombatEvents();
 
@@ -25,14 +28,16 @@ export function CombatScreen() {
   const [showSkillList, setShowSkillList] = useState(false);
   const [pendingSkill, setPendingSkill] = useState<SkillDefinition | null>(null);
   const [allySelectMode, setAllySelectMode] = useState(false);
-  const processingRef = useRef(false);
+  const [showItemMenu, setShowItemMenu] = useState(false);
+
+  // Check if player has any consumable items
+  const inventoryConsumables = useInventoryStore((s) => s.consumables);
+  const hasItems = getAllConsumables().some((c) => (inventoryConsumables[c.id] ?? 0) > 0);
 
   // Get current actor info
   const currentEntry = combat?.turnOrder[combat.currentActorIndex];
   const currentActor = combat && currentEntry ? findEntity(combat, currentEntry.entityId) : null;
   const isPlayerTurn = currentActor?.isParty === true && isAlive(currentActor);
-  const isEnemyTurn =
-    currentActor?.isParty === false && isAlive(currentActor) && combat?.phase === 'active';
 
   // Resolve actor's usable skills (non-passive)
   const actorSkills: SkillDefinition[] =
@@ -42,38 +47,30 @@ export function CombatScreen() {
           .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
       : [];
 
-  // Auto-process enemy turns and skip dead actors
+  // Auto-process enemy turns with a ref guard to prevent double-execution.
+  // This is the ONLY setTimeout in the entire combat turn system.
+  // selectAction() advances atomically; this effect just adds a visual delay for enemies.
   const combatPhase = combat?.phase;
   const combatActorIndex = combat?.currentActorIndex;
+  const currentIsEnemy = currentActor && !currentActor.isParty && isAlive(currentActor);
+  const enemyProcessingRef = useRef(false);
   useEffect(() => {
-    if (combatPhase !== 'active' || processingRef.current) return;
+    if (combatPhase !== 'active') return;
+    if (!currentIsEnemy) return;
 
-    // Skip dead actors
-    if (currentActor && !isAlive(currentActor)) {
-      const timer = setTimeout(() => {
-        advanceToNext();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    // Guard: prevent double-execution if effect fires twice for same actor index
+    if (enemyProcessingRef.current) return;
+    enemyProcessingRef.current = true;
 
-    // Auto-execute enemy turns
-    if (isEnemyTurn) {
-      processingRef.current = true;
-      let advanceTimer: ReturnType<typeof setTimeout>;
-      const timer = setTimeout(() => {
-        processEnemyTurn();
-        advanceTimer = setTimeout(() => {
-          advanceToNext();
-          processingRef.current = false;
-        }, 600);
-      }, 500);
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(advanceTimer);
-        processingRef.current = false;
-      };
-    }
-  }, [combatActorIndex, combatPhase, currentActor, isEnemyTurn, processEnemyTurn, advanceToNext]);
+    const timer = setTimeout(() => {
+      processEnemyTurnAndAdvance();
+      enemyProcessingRef.current = false;
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+      enemyProcessingRef.current = false;
+    };
+  }, [combatActorIndex, combatPhase, currentIsEnemy, processEnemyTurnAndAdvance]);
 
   // Reset UI state when turn changes
   const currentActorIndex = combat?.currentActorIndex;
@@ -85,6 +82,7 @@ export function CombatScreen() {
     if (showSkillList) setShowSkillList(false);
     if (pendingSkill !== null) setPendingSkill(null);
     if (allySelectMode) setAllySelectMode(false);
+    if (showItemMenu) setShowItemMenu(false);
   }
 
   const handleAttackButton = useCallback(() => {
@@ -96,11 +94,10 @@ export function CombatScreen() {
       });
       setSelectedTile(null);
       setSelectedAction(null);
-      setTimeout(() => advanceToNext(), 300);
     } else {
       setSelectedAction('attack');
     }
-  }, [selectedAction, selectedTile, currentActor, selectAction, advanceToNext]);
+  }, [selectedAction, selectedTile, currentActor, selectAction]);
 
   const handleSkillsButton = useCallback(() => {
     setShowSkillList(true);
@@ -118,55 +115,47 @@ export function CombatScreen() {
       // Route based on target type
       switch (skill.targetType) {
         case 'self': {
-          // Immediate: self-targeting skills execute right away
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — self-targeting ignores it
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'all-enemies': {
-          // Immediate: hits all enemies, no target selection needed
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — all-enemies resolves to full grid
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'all-allies': {
-          // Immediate: hits all allies
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — all-allies resolves to party list
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'single-ally': {
-          // Show ally selection mode
           setAllySelectMode(true);
           break;
         }
         case 'single-tile':
         case 'adjacent-tiles': {
-          // Enter tile targeting mode (like attack but for skill)
           setSelectedAction('skill-targeting');
           break;
         }
       }
     },
-    [currentActor, selectAction, advanceToNext]
+    [currentActor, selectAction]
   );
 
   const handleAllySelect = useCallback(
@@ -177,15 +166,12 @@ export function CombatScreen() {
         actorId: currentActor.id,
         type: 'skill',
         skillId: pendingSkill.id,
-        // Encode ally index as targetTile — the skill system resolves
-        // single-ally targeting by party index
         targetTile: [allyIndex, 0],
       });
       setAllySelectMode(false);
       setPendingSkill(null);
-      setTimeout(() => advanceToNext(), 300);
     },
-    [currentActor, pendingSkill, selectAction, advanceToNext]
+    [currentActor, pendingSkill, selectAction]
   );
 
   const handleSkillConfirm = useCallback(() => {
@@ -200,8 +186,7 @@ export function CombatScreen() {
     setSelectedTile(null);
     setSelectedAction(null);
     setPendingSkill(null);
-    setTimeout(() => advanceToNext(), 300);
-  }, [currentActor, pendingSkill, selectedTile, selectAction, advanceToNext]);
+  }, [currentActor, pendingSkill, selectedTile, selectAction]);
 
   const handleDefend = useCallback(() => {
     if (!currentActor) return;
@@ -211,8 +196,7 @@ export function CombatScreen() {
     });
     setSelectedTile(null);
     setSelectedAction(null);
-    setTimeout(() => advanceToNext(), 300);
-  }, [currentActor, selectAction, advanceToNext]);
+  }, [currentActor, selectAction]);
 
   const handleFlee = useCallback(() => {
     if (!currentActor) return;
@@ -230,6 +214,17 @@ export function CombatScreen() {
     setPendingSkill(null);
     setAllySelectMode(false);
     setShowSkillList(false);
+    setShowItemMenu(false);
+  }, []);
+
+  const handleItemsButton = useCallback(() => {
+    setShowItemMenu(true);
+    setSelectedAction(null);
+    setSelectedTile(null);
+  }, []);
+
+  const handleItemUse = useCallback(() => {
+    setShowItemMenu(false);
   }, []);
 
   if (!combat) {
@@ -368,16 +363,28 @@ export function CombatScreen() {
         />
       )}
 
+      {/* Item Menu Overlay */}
+      {showItemMenu && currentActor && (
+        <ItemMenu
+          actor={currentActor}
+          party={combat.party}
+          onUse={handleItemUse}
+          onCancel={handleCancel}
+        />
+      )}
+
       {/* Action Menu */}
-      {combat.phase === 'active' && !showSkillList && !allySelectMode && (
+      {combat.phase === 'active' && !showSkillList && !allySelectMode && !showItemMenu && (
         <ActionMenu
           isPlayerTurn={isPlayerTurn}
           canFlee={combat.canFlee}
           hasSkills={actorSkills.length > 0}
+          hasItems={hasItems}
           selectedAction={selectedAction}
           selectedTile={selectedTile}
           onAttack={selectedAction === 'skill-targeting' ? handleSkillConfirm : handleAttackButton}
           onSkills={handleSkillsButton}
+          onItems={handleItemsButton}
           onDefend={handleDefend}
           onFlee={handleFlee}
           onCancel={handleCancel}
@@ -389,7 +396,28 @@ export function CombatScreen() {
         <div className="absolute inset-0 flex items-center justify-center bg-paper/80 animate-[overlayFadeIn_0.3s_ease-out]">
           <div className="bg-ink text-paper px-8 py-6 border-2 border-paper text-center">
             <div className="text-2xl font-bold mb-2">Victory!</div>
-            <div className="text-sm">Returning to dungeon...</div>
+            {rewards && (
+              <div className="text-sm mb-2">
+                <div>+{rewards.xp} XP  +{rewards.gold}G</div>
+                {rewards.materials.length > 0 && (
+                  <div className="mt-1">
+                    {rewards.materials.map((m) => (
+                      <span key={m.id} className="mr-2">{m.id} x{m.quantity}</span>
+                    ))}
+                  </div>
+                )}
+                {rewards.levelUps.length > 0 && (
+                  <div className="mt-2 border-t border-paper/30 pt-2">
+                    {rewards.levelUps.map((lu) => (
+                      <div key={lu.memberId} className="font-bold">
+                        {lu.name} leveled up! Lv.{lu.oldLevel} → Lv.{lu.newLevel}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-xs">Returning to dungeon...</div>
           </div>
         </div>
       )}

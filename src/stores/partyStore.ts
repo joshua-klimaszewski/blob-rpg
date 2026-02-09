@@ -51,112 +51,130 @@ interface PartyStore {
 }
 
 export const usePartyStore = create<PartyStore>((set, get) => ({
-  roster: [],
-  activePartyIds: [],
+      roster: [],
+      activePartyIds: [],
 
-  getActiveParty: () => {
-    const { roster, activePartyIds } = get();
-    return activePartyIds
-      .map((id) => roster.find((m) => m.id === id))
-      .filter((m): m is PartyMemberState => m !== undefined);
-  },
+      getActiveParty: () => {
+        const { roster, activePartyIds } = get();
+        return activePartyIds
+          .map((id) => roster.find((m) => m.id === id))
+          .filter((m): m is PartyMemberState => m !== undefined);
+      },
 
-  awardXp: (amount) => {
-    set((state) => {
-      const newRoster = state.roster.map((member) => {
-        if (!state.activePartyIds.includes(member.id)) return member;
+      awardXp: (amount) => {
+        set((state) => {
+          const newRoster = state.roster.map((member) => {
+            if (!state.activePartyIds.includes(member.id)) return member;
 
-        const updated = { ...member, xp: member.xp + amount };
-        const classData = getClass(updated.classId);
-        const { member: leveled } = processLevelUps(updated, classData);
-        return leveled;
-      });
+            const updated = { ...member, xp: member.xp + amount };
+            const classData = getClass(updated.classId);
+            const { member: leveled } = processLevelUps(updated, classData);
 
-      return { roster: newRoster };
-    });
-  },
+            // Recalculate stats to restore equipment + passive bonuses after level-up
+            const equippedItems = Object.values(leveled.equipment)
+              .filter((id): id is string => id !== null)
+              .map((id) => getEquipment(id))
+              .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
 
-  syncHpTpFromCombat: (combatParty) => {
-    set((state) => {
-      const newRoster = state.roster.map((member) => {
-        const combatEntity = combatParty.find((e) => e.id === member.id);
-        if (!combatEntity) return member;
+            return recalculatePartyMember(leveled, classData, equippedItems, getSkill);
+          });
 
-        return {
-          ...member,
-          hp: combatEntity.hp,
-          tp: combatEntity.tp,
-        };
-      });
+          return { roster: newRoster };
+        });
+      },
 
-      return { roster: newRoster };
-    });
-  },
+      syncHpTpFromCombat: (combatParty) => {
+        set((state) => {
+          const newRoster = state.roster.map((member) => {
+            const combatEntity = combatParty.find((e) => e.id === member.id);
+            if (!combatEntity) return member;
 
-  restParty: (fraction) => {
-    set((state) => ({
-      roster: state.roster.map((member) => ({
-        ...member,
-        hp: Math.min(member.maxHp, member.hp + Math.floor(member.maxHp * fraction)),
-        tp: Math.min(member.maxTp, member.tp + Math.floor(member.maxTp * fraction)),
-      })),
-    }));
-  },
+            return {
+              ...member,
+              hp: combatEntity.hp,
+              tp: combatEntity.tp,
+            };
+          });
 
-  equipItem: (memberId, slot, itemId) => {
-    set((state) => {
-      const newRoster = state.roster.map((member) => {
-        if (member.id !== memberId) return member;
+          return { roster: newRoster };
+        });
+      },
 
-        const newEquipment = { ...member.equipment, [slot]: itemId };
-        const updatedMember = { ...member, equipment: newEquipment };
+      restParty: (fraction) => {
+        set((state) => ({
+          roster: state.roster.map((member) => ({
+            ...member,
+            hp: Math.min(member.maxHp, member.hp + Math.floor(member.maxHp * fraction)),
+            tp: Math.min(member.maxTp, member.tp + Math.floor(member.maxTp * fraction)),
+          })),
+        }));
+      },
 
-        // Resolve equipped items to definitions for stat recalc
-        const equippedItems = Object.values(newEquipment)
-          .filter((id): id is string => id !== null)
-          .map((id) => getEquipment(id))
-          .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
+      equipItem: (memberId, slot, itemId) => {
+        set((state) => {
+          const newRoster = state.roster.map((member) => {
+            if (member.id !== memberId) return member;
 
-        const classData = getClass(member.classId);
-        return recalculatePartyMember(updatedMember, classData, equippedItems);
-      });
+            const newEquipment = { ...member.equipment, [slot]: itemId };
+            const updatedMember = { ...member, equipment: newEquipment };
 
-      return { roster: newRoster };
-    });
-  },
+            // Resolve equipped items to definitions for stat recalc
+            const equippedItems = Object.values(newEquipment)
+              .filter((id): id is string => id !== null)
+              .map((id) => getEquipment(id))
+              .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
 
-  investSkillPoint: (memberId, skillId) => {
-    const { roster } = get();
-    const member = roster.find((m) => m.id === memberId);
-    if (!member) return false;
+            const classData = getClass(member.classId);
+            return recalculatePartyMember(updatedMember, classData, equippedItems, getSkill);
+          });
 
-    const skill = getSkill(skillId);
-    const check = canLearnSkill(member, skill);
-    if (!check.canLearn) return false;
+          return { roster: newRoster };
+        });
+      },
 
-    set((state) => ({
-      roster: state.roster.map((m) =>
-        m.id === memberId ? learnSkill(m, skill) : m
-      ),
-    }));
+      investSkillPoint: (memberId, skillId) => {
+        const { roster } = get();
+        const member = roster.find((m) => m.id === memberId);
+        if (!member) return false;
 
-    return true;
-  },
+        const skill = getSkill(skillId);
+        const check = canLearnSkill(member, skill);
+        if (!check.canLearn) return false;
 
-  setActiveParty: (memberIds) => {
-    set({ activePartyIds: memberIds.slice(0, 4) });
-  },
+        set((state) => ({
+          roster: state.roster.map((m) => {
+            if (m.id !== memberId) return m;
 
-  initializeRoster: () => {
-    const classIds = ['ironblob', 'strikblob', 'hexblob', 'sparkblob', 'mendblob', 'toxblob'];
-    const roster = classIds.map((classId, idx) => {
-      const classData = getClass(classId);
-      return createPartyMember(`party-${idx + 1}`, classData.name, classData);
-    });
+            const learned = learnSkill(m, skill);
 
-    // Default active party: first 4
-    const activePartyIds = roster.slice(0, 4).map((m) => m.id);
+            // Recalculate stats to apply passive bonuses if a passive was learned
+            const equippedItems = Object.values(learned.equipment)
+              .filter((id): id is string => id !== null)
+              .map((id) => getEquipment(id))
+              .filter((eq): eq is NonNullable<typeof eq> => eq !== undefined);
 
-    set({ roster, activePartyIds });
-  },
+            const classData = getClass(learned.classId);
+            return recalculatePartyMember(learned, classData, equippedItems, getSkill);
+          }),
+        }));
+
+        return true;
+      },
+
+      setActiveParty: (memberIds) => {
+        set({ activePartyIds: memberIds.slice(0, 4) });
+      },
+
+      initializeRoster: () => {
+        const classIds = ['ironblob', 'strikblob', 'hexblob', 'sparkblob', 'mendblob', 'toxblob'];
+        const roster = classIds.map((classId, idx) => {
+          const classData = getClass(classId);
+          return createPartyMember(`party-${idx + 1}`, classData.name, classData);
+        });
+
+        // Default active party: first 4
+        const activePartyIds = roster.slice(0, 4).map((m) => m.id);
+
+        set({ roster, activePartyIds });
+      },
 }));

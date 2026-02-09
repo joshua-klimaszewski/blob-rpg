@@ -36,6 +36,7 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'damage', stat: 'int', multiplier: 1.5 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'sparkblob-chain-lightning',
@@ -51,6 +52,7 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'aoe-splash', stat: 'int', multiplier: 1.0 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'sparkblob-static-field',
@@ -66,6 +68,7 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'hazard', hazardType: 'fire' },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'sparkblob-arcane-focus',
@@ -77,10 +80,10 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'int', amount: 3, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'flat-stat', stat: 'int', amount: 3 },
+    category: 'passive',
   },
   {
     id: 'sparkblob-overcharge',
@@ -96,6 +99,7 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'int', multiplier: 2.5, condition: { type: 'on-hazard' } },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'sparkblob-thunderstorm',
@@ -111,5 +115,6 @@ export const SPARKBLOB_SKILLS: SkillDefinition[] = [
       { type: 'damage', stat: 'int', multiplier: 0.7 },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];
