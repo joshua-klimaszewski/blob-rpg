@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import type { EquipmentSlot } from '../../types/character';
 import { usePartyStore } from '../../stores/partyStore';
 import { useGameStore } from '../../stores/gameStore';
 import { getClass } from '../../data/classes/index';
 import { xpForLevel } from '../../systems/character';
 import { StatBlock } from './StatBlock';
 import { EquipmentSlots } from './EquipmentSlots';
+import { EquipmentPicker } from './EquipmentPicker';
 import { SkillTree } from './SkillTree';
 
 
@@ -14,6 +16,7 @@ export function CharacterSheet() {
   const setScreen = useGameStore((s) => s.setScreen);
 
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [pickerSlot, setPickerSlot] = useState<EquipmentSlot | null>(null);
   const member = roster[selectedIdx];
 
   if (!member) {
@@ -99,10 +102,18 @@ export function CharacterSheet() {
           <div className="text-sm font-bold mb-1">Equipment</div>
           <EquipmentSlots
             equipment={member.equipment}
-            onSlotTap={() => {
-              // MVP: equipment changing not implemented yet (needs inventory UI)
-            }}
+            onSlotTap={(slot) => setPickerSlot(pickerSlot === slot ? null : slot)}
           />
+          {pickerSlot && (
+            <div className="mt-1">
+              <EquipmentPicker
+                memberId={member.id}
+                slot={pickerSlot}
+                currentItemId={member.equipment[pickerSlot]}
+                onClose={() => setPickerSlot(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Skills */}
