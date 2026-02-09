@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CONTROLS_SECTIONS } from '../../data/help/controls'
 import { DUNGEON_SECTIONS } from '../../data/help/dungeon'
 import { COMBAT_SECTIONS } from '../../data/help/combat'
+import { PROGRESSION_SECTIONS } from '../../data/help/progression'
 import { GLOSSARY_ENTRIES } from '../../data/help/glossary'
 import { getAllClasses, getClassSkills } from '../../data/classes/index'
 import { HelpSection } from './HelpSection'
@@ -15,7 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
   debuffer: 'Debuffer / Field Control',
 }
 
-const TABS = ['Controls', 'Dungeon', 'Combat', 'Classes', 'Glossary'] as const
+const TABS = ['Controls', 'Dungeon', 'Combat', 'Progression', 'Classes', 'Glossary'] as const
 type Tab = (typeof TABS)[number]
 
 export function HowToPlayContent() {
@@ -44,6 +45,7 @@ export function HowToPlayContent() {
         {tab === 'Controls' && <ControlsTab />}
         {tab === 'Dungeon' && <DungeonTab />}
         {tab === 'Combat' && <CombatTab />}
+        {tab === 'Progression' && <ProgressionTab />}
         {tab === 'Classes' && <ClassesTab />}
         {tab === 'Glossary' && <GlossaryTab />}
       </div>
@@ -75,6 +77,16 @@ function CombatTab() {
   return (
     <>
       {COMBAT_SECTIONS.map((s) => (
+        <HelpSection key={s.heading} {...s} />
+      ))}
+    </>
+  )
+}
+
+function ProgressionTab() {
+  return (
+    <>
+      {PROGRESSION_SECTIONS.map((s) => (
         <HelpSection key={s.heading} {...s} />
       ))}
     </>

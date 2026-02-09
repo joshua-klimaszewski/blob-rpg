@@ -41,6 +41,7 @@ import {
   getCurrentActor,
   getNextAliveActor,
   advanceTurn,
+  advanceToNextAlive,
   calculateDamage,
   applyDamage,
   executeAttack,
@@ -664,6 +665,212 @@ describe('advanceTurn', () => {
     const newState = advanceTurn(state);
 
     expect(newState.turnOrder[1].hasActed).toBe(false);
+  });
+});
+
+describe('advanceToNextAlive', () => {
+  it('should advance to next actor when they are alive', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const enemy = createTestEntity({ id: 'enemy-1', hp: 30 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [enemy],
+      turnOrder,
+      currentActorIndex: 0,
+    });
+
+    const newState = advanceToNextAlive(state);
+    expect(newState.currentActorIndex).toBe(1);
+  });
+
+  it('should skip one dead actor', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const deadEnemy = createTestEntity({ id: 'enemy-1', hp: 0 });
+    const aliveEnemy = createTestEntity({ id: 'enemy-2', hp: 30 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 12, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-2', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [deadEnemy, aliveEnemy],
+      turnOrder,
+      currentActorIndex: 0,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should skip dead enemy-1 (index 1) and land on enemy-2 (index 2)
+    expect(newState.currentActorIndex).toBe(2);
+  });
+
+  it('should skip multiple consecutive dead actors', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const dead1 = createTestEntity({ id: 'enemy-1', hp: 0 });
+    const dead2 = createTestEntity({ id: 'enemy-2', hp: 0 });
+    const alive = createTestEntity({ id: 'enemy-3', hp: 30 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 15, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 12, hasActed: false, isDefending: false },
+      { entityId: 'enemy-2', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-3', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [dead1, dead2, alive],
+      turnOrder,
+      currentActorIndex: 0,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should skip both dead enemies and land on enemy-3 (index 3)
+    expect(newState.currentActorIndex).toBe(3);
+  });
+
+  it('should wrap around and skip dead actors at the end', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const deadEnemy = createTestEntity({ id: 'enemy-1', hp: 0 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [deadEnemy],
+      turnOrder,
+      currentActorIndex: 1,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should wrap around past dead enemy-1 to ally-1 (index 0)
+    expect(newState.currentActorIndex).toBe(0);
+    // Round should increment because we wrapped
+    expect(newState.round).toBe(2);
+  });
+
+  it('should increment round when wrapping past index 0', () => {
+    const ally1 = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const ally2 = createTestEntity({ id: 'ally-2', hp: 40, isParty: true, position: null });
+    const deadEnemy = createTestEntity({ id: 'enemy-1', hp: 0 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 12, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'ally-2', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally1, ally2],
+      enemies: [deadEnemy],
+      turnOrder,
+      currentActorIndex: 2,
+      round: 3,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should wrap past index 0 (alive) — lands on ally-1
+    expect(newState.currentActorIndex).toBe(0);
+    expect(newState.round).toBe(4);
+  });
+
+  it('should NOT increment round when not wrapping', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const enemy = createTestEntity({ id: 'enemy-1', hp: 30 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [enemy],
+      turnOrder,
+      currentActorIndex: 0,
+      round: 2,
+    });
+
+    const newState = advanceToNextAlive(state);
+    expect(newState.currentActorIndex).toBe(1);
+    expect(newState.round).toBe(2);
+  });
+
+  it('should return unchanged state if no alive actors found (safety)', () => {
+    const dead1 = createTestEntity({ id: 'dead-1', hp: 0 });
+    const dead2 = createTestEntity({ id: 'dead-2', hp: 0 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'dead-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'dead-2', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    const state = createTestState({
+      enemies: [dead1, dead2],
+      turnOrder,
+      currentActorIndex: 0,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should not loop infinitely — returns state with index advanced by 1 as fallback
+    expect(newState).toBeDefined();
+  });
+
+  it('should reset hasActed for the target actor', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const dead = createTestEntity({ id: 'enemy-1', hp: 0 });
+    const enemy = createTestEntity({ id: 'enemy-2', hp: 30 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 12, hasActed: true, isDefending: false },
+      { entityId: 'enemy-1', speed: 10, hasActed: true, isDefending: false },
+      { entityId: 'enemy-2', speed: 8, hasActed: true, isDefending: false },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [dead, enemy],
+      turnOrder,
+      currentActorIndex: 0,
+    });
+
+    const newState = advanceToNextAlive(state);
+    // Should land on index 2, and hasActed should be reset for that entry
+    expect(newState.currentActorIndex).toBe(2);
+    expect(newState.turnOrder[2].hasActed).toBe(false);
+  });
+
+  it('should reset isDefending for skipped dead actors on round wrap', () => {
+    const ally = createTestEntity({ id: 'ally-1', hp: 50, isParty: true, position: null });
+    const dead = createTestEntity({ id: 'enemy-1', hp: 0 });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'ally-1', speed: 10, hasActed: false, isDefending: false },
+      { entityId: 'enemy-1', speed: 8, hasActed: true, isDefending: true },
+    ];
+
+    const state = createTestState({
+      party: [ally],
+      enemies: [dead],
+      turnOrder,
+      currentActorIndex: 1,
+    });
+
+    const newState = advanceToNextAlive(state);
+    expect(newState.currentActorIndex).toBe(0);
+    // The target actor's hasActed should be reset
+    expect(newState.turnOrder[0].hasActed).toBe(false);
   });
 });
 

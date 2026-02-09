@@ -48,29 +48,19 @@ export function CombatScreen() {
           .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
       : [];
 
-  // Auto-process enemy turns and skip dead actors
+  // Auto-process enemy turns
+  // advanceToNextAlive() guarantees the current actor is alive,
+  // so we only need to handle: enemy turn → auto-execute.
   const combatPhase = combat?.phase;
   const combatActorIndex = combat?.currentActorIndex;
+  const currentIsEnemy = currentActor && !currentActor.isParty && isAlive(currentActor);
   useEffect(() => {
     if (combatPhase !== 'active') return;
+    if (!currentIsEnemy) return;
 
-    const currentEntry = combat?.turnOrder[combat.currentActorIndex];
-    const actor = combat && currentEntry ? findEntity(combat, currentEntry.entityId) : null;
-
-    // Skip dead actors
-    if (actor && !isAlive(actor)) {
-      const timer = setTimeout(() => advanceToNext(), 100);
-      return () => clearTimeout(timer);
-    }
-
-    // Auto-execute enemy turns with a single atomic store call
-    // processEnemyTurnAndAdvance does execute + advance in one set(),
-    // so no intermediate renders can cancel the advance.
-    if (actor && !actor.isParty && isAlive(actor)) {
-      const timer = setTimeout(() => processEnemyTurnAndAdvance(), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [combatActorIndex, combatPhase, combat, processEnemyTurnAndAdvance, advanceToNext]);
+    const timer = setTimeout(() => processEnemyTurnAndAdvance(), 600);
+    return () => clearTimeout(timer);
+  }, [combatActorIndex, combatPhase, currentIsEnemy, processEnemyTurnAndAdvance]);
 
   // Reset UI state when turn changes
   const currentActorIndex = combat?.currentActorIndex;
