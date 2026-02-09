@@ -42,17 +42,30 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
     const result = processTurn(dungeon, floor, dir);
     set({ dungeon: result.state, lastEvents: result.events });
 
-    // Handle events that trigger combat
+    // Handle events that trigger combat or transitions
     for (const event of result.events) {
       if (event.type === 'random-encounter') {
-        const encounter = createRandomEncounter();
+        const encounter = createRandomEncounter(floor);
         useCombatStore.getState().startCombat(encounter);
         return;
       }
 
       if (event.type === 'foe-collision') {
-        const encounter = createFOEEncounter();
+        const encounter = createFOEEncounter(floor);
         useCombatStore.getState().startCombat(encounter);
+        return;
+      }
+
+      if (event.type === 'reached-exit') {
+        // Transition to next floor or return to town
+        const nextFloorId = floor.nextFloorId;
+        setTimeout(() => {
+          if (nextFloorId) {
+            get().enterDungeon(nextFloorId);
+          } else {
+            get().warpToTown();
+          }
+        }, 2000); // Wait for "Floor complete!" notification
         return;
       }
     }

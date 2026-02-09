@@ -123,10 +123,13 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 > Fill the first dungeon, balance, tutorial.
 
-- [ ] Full first dungeon: 3-5 floors with increasing difficulty
-- [ ] Enemy roster (8-12 enemy types with varied stats, AI patterns, bind vulnerabilities)
-- [ ] Balance: encounter tables, drop rates, shop unlock recipes, XP curves
-- [ ] Equipment progression for first dungeon
+- [x] Full first dungeon: 3 floors with increasing difficulty (2026-02-08)
+- [x] Enemy roster: 6 types (Slime, Mossy Slime, Fungoid, Sporebat, Crystal Beetle, Caveworm) (2026-02-08)
+- [x] Balance: floor encounter tables, material drops, 8 shop recipes, tiered XP/gold (2026-02-08)
+- [x] Equipment progression: 16 items (8 starter + 8 tier 2 unlocked via F2/F3 materials) (2026-02-08)
+- [x] Enemy AI improvements: aggressive/defensive/random patterns (2026-02-08)
+- [x] 10 quests across F1-F3 (kill, gather, explore) (2026-02-08)
+- [x] Floor transitions: exit → next floor or return to town (2026-02-08)
 - [ ] Tutorial / new game flow
 - [ ] Accessibility pass (keyboard nav, screen reader labels, touch targets)
 - [ ] Performance (memoization, lazy loading)

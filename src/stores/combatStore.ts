@@ -154,7 +154,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const currentEntry = combat.turnOrder[combat.currentActorIndex];
     if (!currentEntry) return;
 
-    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill);
+    const result = executeEnemyTurn(combat, currentEntry.entityId, defaultRNG, lookupSkill, getEnemy);
 
     set({
       combat: result.state,

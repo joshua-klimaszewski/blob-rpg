@@ -24,4 +24,38 @@ export const SHOP_RECIPES: ShopRecipe[] = [
     unlocksItemId: 'cloth-robe',
     requirements: [{ materialId: 'slime-core', quantity: 3 }],
   },
+
+  // Tier 2 — F2/F3 material unlocks
+  {
+    unlocksItemId: 'fungal-staff',
+    requirements: [{ materialId: 'fungal-cap', quantity: 3 }],
+  },
+  {
+    unlocksItemId: 'bone-club',
+    requirements: [{ materialId: 'bat-wing', quantity: 4 }],
+  },
+  {
+    unlocksItemId: 'crystal-blade',
+    requirements: [{ materialId: 'crystal-shard', quantity: 2 }],
+  },
+  {
+    unlocksItemId: 'shell-armor',
+    requirements: [{ materialId: 'tough-carapace', quantity: 3 }],
+  },
+  {
+    unlocksItemId: 'fungal-robe',
+    requirements: [{ materialId: 'fungal-cap', quantity: 5 }],
+  },
+  {
+    unlocksItemId: 'bat-earring',
+    requirements: [{ materialId: 'bat-wing', quantity: 3 }],
+  },
+  {
+    unlocksItemId: 'crystal-pendant',
+    requirements: [{ materialId: 'crystal-shard', quantity: 2 }],
+  },
+  {
+    unlocksItemId: 'carapace-ring',
+    requirements: [{ materialId: 'tough-carapace', quantity: 2 }],
+  },
 ];
