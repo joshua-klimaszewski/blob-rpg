@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useCombatStore } from '../../stores/combatStore';
 import { getAllConsumables } from '../../data/items/index';
-import { executeItemAction } from '../../systems/combat';
+import { executeItemAction, advanceToNextAlive } from '../../systems/combat';
 import type { ConsumableDefinition } from '../../types/economy';
 import type { CombatEntity } from '../../types/combat';
 
@@ -32,10 +32,13 @@ export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
     // Deduct consumable from inventory
     consumeItem(selectedItem.id);
 
-    // Execute item effect in combat
+    // Execute item effect in combat and atomically advance turn
     const result = executeItemAction(combat, actor.id, target.id, selectedItem);
+    const advanced = result.state.phase === 'active'
+      ? advanceToNextAlive(result.state)
+      : result.state;
     useCombatStore.setState({
-      combat: result.state,
+      combat: advanced,
       lastEvents: result.events,
     });
 

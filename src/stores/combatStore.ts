@@ -57,14 +57,11 @@ interface CombatStore {
   /** Start a new combat encounter */
   startCombat: (encounter: EncounterData) => void;
 
-  /** Execute a combat action */
+  /** Execute a combat action and atomically advance to the next actor */
   selectAction: (action: Action) => void;
 
   /** Process an enemy's turn and advance to the next actor atomically */
   processEnemyTurnAndAdvance: () => void;
-
-  /** Advance to the next actor in turn order */
-  advanceToNext: () => void;
 
   /** End combat and return to previous screen */
   endCombat: () => void;
@@ -168,16 +165,20 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
   selectAction: (action) => {
     const { combat } = get();
-    if (!combat) return;
+    if (!combat || combat.phase !== 'active') return;
 
     const result = executeAction(combat, action, defaultRNG, lookupSkill);
 
-    set({
-      combat: result.state,
-      lastEvents: result.events,
-    });
+    // If phase changed (victory/defeat/fled), don't advance turn
+    if (result.state.phase !== 'active') {
+      set({ combat: result.state, lastEvents: result.events });
+      handlePhaseTransition(get, result.state);
+      return;
+    }
 
-    handlePhaseTransition(get, result.state);
+    // Atomically execute action AND advance to next alive actor in one set()
+    const advanced = advanceToNextAlive(result.state);
+    set({ combat: advanced, lastEvents: result.events });
   },
 
   processEnemyTurnAndAdvance: () => {
@@ -205,14 +206,6 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       combat: advanced,
       lastEvents: result.events,
     });
-  },
-
-  advanceToNext: () => {
-    const { combat } = get();
-    if (!combat || combat.phase !== 'active') return;
-
-    const newState = advanceToNextAlive(combat);
-    set({ combat: newState });
   },
 
   endCombat: () => {

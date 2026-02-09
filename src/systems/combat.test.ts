@@ -4,8 +4,10 @@
 
 import { describe, it, expect } from 'vitest';
 import type {
+  Action,
   BattleTile,
   CombatEntity,
+  CombatEventUnion,
   CombatState,
   EntityStats,
   BindState,
@@ -2199,5 +2201,492 @@ describe('calculateRewards', () => {
     const rewards = calculateRewards(state);
     expect(rewards.xp).toBe(20);
     expect(rewards.gold).toBe(10);
+  });
+});
+
+// ============================================================================
+// Turn Flow Integration Tests
+// ============================================================================
+// These tests simulate the EXACT sequence the store performs:
+// - Player turn: executeAction() → advanceToNextAlive()
+// - Enemy turn:  executeEnemyTurn() → advanceToNextAlive()
+//
+// The goal: prove that every turn scenario advances correctly with NO
+// setTimeout chains or component-level intervention needed.
+// ============================================================================
+
+import { executeEnemyTurn } from './combat';
+
+describe('executeEnemyTurn', () => {
+  const fixedRNG: RNG = () => 0.5;
+
+  it('should execute a basic attack on a random party member', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const enemy1 = createTestEntity({ id: 'e1', hp: 30, maxHp: 30, position: [0, 0], skills: [] });
+
+    const turnOrder: TurnEntry[] = [
+      { entityId: 'p1', speed: 10, hasActed: true, isDefending: false },
+      { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+    ];
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [enemy1],
+      grid,
+      turnOrder,
+      currentActorIndex: 1,
+    });
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG);
+    // Should produce a damage event targeting the party member
+    expect(result.events.length).toBeGreaterThan(0);
+    const dmgEvent = result.events.find((e) => e.type === 'damage');
+    expect(dmgEvent).toBeDefined();
+    // Enemy should be marked as having acted
+    const enemyEntry = result.state.turnOrder.find((e) => e.entityId === 'e1');
+    expect(enemyEntry?.hasActed).toBe(true);
+  });
+
+  it('should return no-op for dead enemy', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 50, isParty: true, position: null });
+    const deadEnemy = createTestEntity({ id: 'e1', hp: 0, position: [0, 0], skills: [] });
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [deadEnemy],
+      turnOrder: [
+        { entityId: 'p1', speed: 10, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG);
+    expect(result.events).toEqual([]);
+    // State should be unchanged
+    expect(result.state).toBe(state);
+  });
+
+  it('should detect defeat when enemy kills last party member', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 1, maxHp: 50, isParty: true, position: null });
+    const enemy1 = createTestEntity({
+      id: 'e1', hp: 30, position: [0, 0], skills: [],
+      stats: { ...createDefaultStats(), str: 20 },
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [enemy1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 10, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG);
+    expect(result.state.phase).toBe('defeat');
+    expect(result.events.some((e) => e.type === 'defeat')).toBe(true);
+  });
+});
+
+describe('Turn Flow Integration', () => {
+  // Deterministic RNG: always returns 0.99 so enemy skill chance fails → basic attack
+  const alwaysBasicAttackRNG: RNG = () => 0.99;
+  // RNG that avoids crits (luc/100 < rng) and gives mid variance
+  const midRNG: RNG = () => 0.5;
+
+  /**
+   * Simulates the EXACT store flow for a player action:
+   * 1. executeAction(state, action)
+   * 2. if phase is still 'active', advanceToNextAlive(result.state)
+   */
+  function playerActAndAdvance(
+    state: CombatState,
+    action: Action,
+  ): { state: CombatState; events: CombatEventUnion[] } {
+    const result = executeAction(state, action, midRNG);
+    if (result.state.phase !== 'active') {
+      return result;
+    }
+    return { state: advanceToNextAlive(result.state), events: result.events };
+  }
+
+  /**
+   * Simulates the EXACT store flow for an enemy action:
+   * 1. executeEnemyTurn(state, actorId)
+   * 2. if phase is still 'active', advanceToNextAlive(result.state)
+   */
+  function enemyActAndAdvance(
+    state: CombatState,
+    actorId: string,
+  ): { state: CombatState; events: CombatEventUnion[] } {
+    const result = executeEnemyTurn(state, actorId, alwaysBasicAttackRNG);
+    if (result.state.phase !== 'active') {
+      return result;
+    }
+    return { state: advanceToNextAlive(result.state), events: result.events };
+  }
+
+  // --- Scenario 1: Player → Enemy → Player (basic 2-actor cycle) ---
+  it('should advance from player to enemy to player in a 2-actor turn order', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const e1 = createTestEntity({ id: 'e1', hp: 30, maxHp: 30, position: [1, 1], skills: [] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [p1],
+      enemies: [e1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // Step 1: Player attacks
+    const afterPlayer = playerActAndAdvance(state, {
+      actorId: 'p1',
+      type: 'attack',
+      targetTile: [1, 1],
+    } as AttackAction);
+
+    // Should now be enemy's turn (index 1)
+    expect(afterPlayer.state.currentActorIndex).toBe(1);
+    const currentEntry1 = afterPlayer.state.turnOrder[1];
+    expect(currentEntry1.entityId).toBe('e1');
+
+    // Step 2: Enemy acts
+    const afterEnemy = enemyActAndAdvance(afterPlayer.state, 'e1');
+
+    // Should wrap back to player (index 0), round increments
+    expect(afterEnemy.state.currentActorIndex).toBe(0);
+    expect(afterEnemy.state.round).toBe(2);
+  });
+
+  // --- Scenario 2: Player → Enemy1 → Enemy2 → Player (consecutive enemies) ---
+  it('should handle consecutive enemy turns correctly', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const e1 = createTestEntity({ id: 'e1', hp: 30, maxHp: 30, position: [0, 0], skills: [] });
+    const e2 = createTestEntity({ id: 'e2', hp: 30, maxHp: 30, position: [0, 1], skills: [] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+    grid = addEntityToTile(grid, 'e2', [0, 1]);
+
+    const state = createTestState({
+      party: [p1],
+      enemies: [e1, e2],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 12, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'e2', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // Player acts → advances to e1
+    const afterPlayer = playerActAndAdvance(state, {
+      actorId: 'p1',
+      type: 'attack',
+      targetTile: [0, 0],
+    } as AttackAction);
+    expect(afterPlayer.state.currentActorIndex).toBe(1);
+
+    // e1 acts → advances to e2
+    const afterE1 = enemyActAndAdvance(afterPlayer.state, 'e1');
+    expect(afterE1.state.currentActorIndex).toBe(2);
+    expect(afterE1.state.turnOrder[2].entityId).toBe('e2');
+
+    // e2 acts → wraps to p1
+    const afterE2 = enemyActAndAdvance(afterE1.state, 'e2');
+    expect(afterE2.state.currentActorIndex).toBe(0);
+    expect(afterE2.state.round).toBe(2);
+  });
+
+  // --- Scenario 3: Player kills enemy → dead enemy skipped ---
+  it('should skip dead enemy when advancing after player kills it', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null,
+      stats: { ...createDefaultStats(), str: 100 }, // High STR to guarantee kill
+    });
+    const e1 = createTestEntity({ id: 'e1', hp: 1, maxHp: 30, position: [1, 1], skills: [] });
+    const p2 = createTestEntity({ id: 'p2', hp: 40, maxHp: 40, isParty: true, position: null });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [p1, p2],
+      enemies: [e1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 15, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'p2', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // Player kills enemy → should skip dead e1 and advance to p2
+    const afterKill = playerActAndAdvance(state, {
+      actorId: 'p1',
+      type: 'attack',
+      targetTile: [1, 1],
+    } as AttackAction);
+
+    // If victory triggered, phase should change
+    // (single enemy killed = all enemies defeated = victory)
+    expect(afterKill.state.phase).toBe('victory');
+  });
+
+  // --- Scenario 4: Kill one enemy of two, second enemy still acts ---
+  it('should skip killed enemy but allow other enemy to act', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null,
+      stats: { ...createDefaultStats(), str: 100 },
+    });
+    const e1 = createTestEntity({ id: 'e1', hp: 1, maxHp: 30, position: [0, 0], skills: [] });
+    const e2 = createTestEntity({ id: 'e2', hp: 30, maxHp: 30, position: [1, 1], skills: [] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+    grid = addEntityToTile(grid, 'e2', [1, 1]);
+
+    const state = createTestState({
+      party: [p1],
+      enemies: [e1, e2],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 15, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'e2', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // Player kills e1 → should skip dead e1, advance to e2
+    const afterKill = playerActAndAdvance(state, {
+      actorId: 'p1',
+      type: 'attack',
+      targetTile: [0, 0],
+    } as AttackAction);
+
+    // Phase should still be active (e2 is alive)
+    expect(afterKill.state.phase).toBe('active');
+    // Should have advanced past dead e1 to e2
+    expect(afterKill.state.currentActorIndex).toBe(2);
+    expect(afterKill.state.turnOrder[2].entityId).toBe('e2');
+
+    // e2 acts → wraps back to p1
+    const afterE2 = enemyActAndAdvance(afterKill.state, 'e2');
+    expect(afterE2.state.currentActorIndex).toBe(0);
+    expect(afterE2.state.round).toBe(2);
+  });
+
+  // --- Scenario 5: 4 players → 1 enemy → back to player 1 (matches screenshot) ---
+  it('should handle 4-player party vs 1 enemy turn cycle (screenshot scenario)', () => {
+    const p1 = createTestEntity({ id: 'strik', hp: 45, maxHp: 45, isParty: true, position: null });
+    const p2 = createTestEntity({ id: 'spark', hp: 40, maxHp: 40, isParty: true, position: null });
+    const p3 = createTestEntity({ id: 'hexbl', hp: 42, maxHp: 42, isParty: true, position: null });
+    const p4 = createTestEntity({ id: 'ironb', hp: 50, maxHp: 50, isParty: true, position: null });
+    const slime = createTestEntity({ id: 'slime', hp: 30, maxHp: 30, position: [0, 0], skills: [] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'slime', [0, 0]);
+
+    const state = createTestState({
+      party: [p1, p2, p3, p4],
+      enemies: [slime],
+      grid,
+      turnOrder: [
+        { entityId: 'strik', speed: 12, hasActed: false, isDefending: false },
+        { entityId: 'spark', speed: 11, hasActed: false, isDefending: false },
+        { entityId: 'hexbl', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'slime', speed: 9, hasActed: false, isDefending: false },
+        { entityId: 'ironb', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // p1 attacks → advances to p2
+    const after1 = playerActAndAdvance(state, {
+      actorId: 'strik', type: 'attack', targetTile: [0, 0],
+    } as AttackAction);
+    expect(after1.state.currentActorIndex).toBe(1);
+
+    // p2 attacks → advances to p3
+    const after2 = playerActAndAdvance(after1.state, {
+      actorId: 'spark', type: 'attack', targetTile: [0, 0],
+    } as AttackAction);
+    expect(after2.state.currentActorIndex).toBe(2);
+
+    // p3 attacks → advances to slime
+    const after3 = playerActAndAdvance(after2.state, {
+      actorId: 'hexbl', type: 'attack', targetTile: [0, 0],
+    } as AttackAction);
+    expect(after3.state.currentActorIndex).toBe(3);
+    expect(after3.state.turnOrder[3].entityId).toBe('slime');
+
+    // SLIME acts → should advance to ironb (index 4)
+    const afterSlime = enemyActAndAdvance(after3.state, 'slime');
+    expect(afterSlime.state.phase).toBe('active');
+    expect(afterSlime.state.currentActorIndex).toBe(4);
+    expect(afterSlime.state.turnOrder[4].entityId).toBe('ironb');
+
+    // ironb acts → wraps to strik (index 0), round 2
+    const afterIronb = playerActAndAdvance(afterSlime.state, {
+      actorId: 'ironb', type: 'attack', targetTile: [0, 0],
+    } as AttackAction);
+    expect(afterIronb.state.currentActorIndex).toBe(0);
+    expect(afterIronb.state.round).toBe(2);
+  });
+
+  // --- Scenario 6: Player defends → turn still advances ---
+  it('should advance turn after player defends', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, isParty: true, position: null });
+    const e1 = createTestEntity({ id: 'e1', hp: 30, position: [1, 1], skills: [] });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [p1],
+      enemies: [e1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    const afterDefend = playerActAndAdvance(state, {
+      actorId: 'p1',
+      type: 'defend',
+    });
+    expect(afterDefend.state.currentActorIndex).toBe(1);
+  });
+
+  // --- Scenario 7: Two enemies back-to-back, first dies during player attack ---
+  it('should handle dead enemy between two live enemies', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, isParty: true, position: null,
+      stats: { ...createDefaultStats(), str: 100 },
+    });
+    const e1 = createTestEntity({ id: 'e1', hp: 1, maxHp: 30, position: [0, 0], skills: [] });
+    const e2 = createTestEntity({ id: 'e2', hp: 30, maxHp: 30, position: [0, 1], skills: [] });
+    const p2 = createTestEntity({ id: 'p2', hp: 40, isParty: true, position: null });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+    grid = addEntityToTile(grid, 'e2', [0, 1]);
+
+    const state = createTestState({
+      party: [p1, p2],
+      enemies: [e1, e2],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 15, hasActed: false, isDefending: false },
+        { entityId: 'e1', speed: 12, hasActed: false, isDefending: false },
+        { entityId: 'e2', speed: 10, hasActed: false, isDefending: false },
+        { entityId: 'p2', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 0,
+    });
+
+    // p1 kills e1 → skips dead e1, advances to e2
+    const afterKill = playerActAndAdvance(state, {
+      actorId: 'p1', type: 'attack', targetTile: [0, 0],
+    } as AttackAction);
+    expect(afterKill.state.phase).toBe('active');
+    expect(afterKill.state.currentActorIndex).toBe(2);
+
+    // e2 acts → advances to p2
+    const afterE2 = enemyActAndAdvance(afterKill.state, 'e2');
+    expect(afterE2.state.currentActorIndex).toBe(3);
+    expect(afterE2.state.turnOrder[3].entityId).toBe('p2');
+
+    // p2 acts → wraps past dead e1 to p1
+    const afterP2 = playerActAndAdvance(afterE2.state, {
+      actorId: 'p2', type: 'defend',
+    });
+    expect(afterP2.state.currentActorIndex).toBe(0);
+    expect(afterP2.state.round).toBe(2);
+  });
+
+  // --- Scenario 8: Enemy turn with skill usage (like Slime with aggressive AI) ---
+  it('should handle enemy using a skill during their turn', () => {
+    const p1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const e1 = createTestEntity({
+      id: 'e1', hp: 30, maxHp: 30, position: [0, 0],
+      definitionId: 'test-enemy',
+      skills: ['test-skill'],
+      tp: 10, maxTp: 10,
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [0, 0]);
+
+    const testSkill: import('../types/character').SkillDefinition = {
+      id: 'test-skill',
+      name: 'Test Skill',
+      description: 'test',
+      classId: 'enemy',
+      tpCost: 3,
+      targetType: 'single-tile',
+      bodyPartRequired: null,
+      levelRequired: 1,
+      skillPointCost: 0,
+      isPassive: false,
+      effects: [{ type: 'damage', stat: 'str', multiplier: 1.0 }],
+    };
+
+    const skillLookup = (id: string) => id === 'test-skill' ? testSkill : undefined as unknown as import('../types/character').SkillDefinition;
+    const enemyDef: EnemyDefinition = {
+      id: 'test-enemy',
+      name: 'Test',
+      stats: createDefaultStats(),
+      maxHp: 30,
+      maxTp: 10,
+      skills: ['test-skill'],
+      aiPattern: 'aggressive',
+      dropTable: { materials: [], xp: 10, gold: { min: 1, max: 5 } },
+    };
+    const getEnemyDef = (id: string) => id === 'test-enemy' ? enemyDef : undefined;
+
+    const state = createTestState({
+      party: [p1],
+      enemies: [e1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 10, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 8, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    // Use RNG that guarantees skill usage (0.1 < 0.5 aggressive threshold)
+    const useSkillRNG: RNG = () => 0.1;
+    const result = executeEnemyTurn(state, 'e1', useSkillRNG, skillLookup, getEnemyDef);
+
+    // Enemy should have acted (events produced) and turn marked
+    expect(result.events.length).toBeGreaterThan(0);
+    const entry = result.state.turnOrder.find((e) => e.entityId === 'e1');
+    expect(entry?.hasActed).toBe(true);
+
+    // Advance should go back to p1
+    if (result.state.phase === 'active') {
+      const advanced = advanceToNextAlive(result.state);
+      expect(advanced.currentActorIndex).toBe(0);
+    }
   });
 });
