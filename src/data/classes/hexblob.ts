@@ -36,6 +36,7 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'bind', bindType: 'head', chance: 80, duration: 3 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'hexblob-arm-bind',
@@ -51,6 +52,7 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'bind', bindType: 'arm', chance: 80, duration: 3 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'hexblob-leg-bind',
@@ -66,6 +68,7 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'bind', bindType: 'leg', chance: 80, duration: 3 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'hexblob-bind-mastery',
@@ -77,10 +80,10 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'int', amount: 0, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'bind-duration-bonus', amount: 1 },
+    category: 'passive',
   },
   {
     id: 'hexblob-ecstasy',
@@ -96,6 +99,7 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'int', multiplier: 3.0, condition: { type: 'has-all-binds' } },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'hexblob-nerve-shock',
@@ -112,5 +116,6 @@ export const HEXBLOB_SKILLS: SkillDefinition[] = [
       { type: 'ailment', ailmentType: 'paralyze', chance: 40, duration: 2 },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];

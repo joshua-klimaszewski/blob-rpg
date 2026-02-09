@@ -37,6 +37,7 @@ export const IRONBLOB_SKILLS: SkillDefinition[] = [
       { type: 'displacement', direction: 'push', distance: 1 },
     ],
     isPassive: false,
+    category: 'core',
   },
   {
     id: 'ironblob-fortress',
@@ -52,6 +53,7 @@ export const IRONBLOB_SKILLS: SkillDefinition[] = [
       { type: 'self-buff', buffStat: 'vit', amount: 5, duration: 3 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'ironblob-taunt-strike',
@@ -67,21 +69,22 @@ export const IRONBLOB_SKILLS: SkillDefinition[] = [
       { type: 'damage', stat: 'str', multiplier: 1.0 },
     ],
     isPassive: false,
+    category: 'active',
   },
   {
     id: 'ironblob-iron-wall',
     name: 'Iron Wall',
-    description: 'Passive: +10% VIT (rounded down).',
+    description: 'Passive: +2 VIT.',
     classId: 'ironblob',
     tpCost: 0,
     targetType: 'self',
     bodyPartRequired: null,
     levelRequired: 3,
     skillPointCost: 1,
-    effects: [
-      { type: 'self-buff', buffStat: 'vit', amount: 0, duration: 0 },
-    ],
+    effects: [],
     isPassive: true,
+    passiveModifier: { type: 'flat-stat', stat: 'vit', amount: 2 },
+    category: 'passive',
   },
   {
     id: 'ironblob-crushing-blow',
@@ -97,6 +100,7 @@ export const IRONBLOB_SKILLS: SkillDefinition[] = [
       { type: 'conditional-damage', stat: 'str', multiplier: 2.0, condition: { type: 'has-leg-bind' } },
     ],
     isPassive: false,
+    category: 'synergy',
   },
   {
     id: 'ironblob-guardian-push',
@@ -112,5 +116,6 @@ export const IRONBLOB_SKILLS: SkillDefinition[] = [
       { type: 'displacement', direction: 'push', distance: 1 },
     ],
     isPassive: false,
+    category: 'ultimate',
   },
 ];
