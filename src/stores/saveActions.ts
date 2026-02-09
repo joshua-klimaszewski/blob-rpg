@@ -166,6 +166,24 @@ export function collectSuspendState(): Omit<SuspendSaveData, 'version' | 'guildI
   };
 }
 
+// Auto-save event notification (for UI indicator)
+let autoSaveEventCounter = 0;
+const autoSaveListeners = new Set<() => void>();
+
+function notifyAutoSave() {
+  autoSaveEventCounter++;
+  autoSaveListeners.forEach((l) => l());
+}
+
+export function subscribeAutoSaveEvent(cb: () => void): () => void {
+  autoSaveListeners.add(cb);
+  return () => autoSaveListeners.delete(cb);
+}
+
+export function getAutoSaveEventCount(): number {
+  return autoSaveEventCounter;
+}
+
 /** Auto-save town state to the autosave slot */
 export function autoSaveTown(): void {
   const { currentGuildId } = useGuildStore.getState();
@@ -174,6 +192,7 @@ export function autoSaveTown(): void {
   const data = collectGameState();
   saveAutoSlot(currentGuildId, data);
   clearSuspend(currentGuildId);
+  notifyAutoSave();
 }
 
 /** Auto-save dungeon state as a suspend save */
@@ -186,6 +205,7 @@ export function autoSaveDungeon(): void {
 
   const data = collectSuspendState();
   saveSuspend(currentGuildId, data);
+  notifyAutoSave();
 }
 
 /** Reset all stores to fresh state (for New Game) */

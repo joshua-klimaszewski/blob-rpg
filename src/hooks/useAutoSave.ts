@@ -14,7 +14,12 @@ import { useInventoryStore } from '../stores/inventoryStore';
 import { useQuestStore } from '../stores/questStore';
 import { useDungeonProgressStore } from '../stores/dungeonProgressStore';
 import { useDungeonStore } from '../stores/dungeonStore';
-import { autoSaveTown, autoSaveDungeon } from '../stores/saveActions';
+import {
+  autoSaveTown,
+  autoSaveDungeon,
+  subscribeAutoSaveEvent,
+  getAutoSaveEventCount,
+} from '../stores/saveActions';
 
 const TOWN_SCREENS = new Set([
   'town', 'inn', 'shop', 'guild', 'character',
@@ -23,34 +28,9 @@ const TOWN_SCREENS = new Set([
 
 const DEBOUNCE_MS = 500;
 
-// Simple event counter for save indicator
-let saveEventCounter = 0;
-const saveEventListeners = new Set<() => void>();
-
-function notifySaveEvent() {
-  saveEventCounter++;
-  saveEventListeners.forEach((l) => l());
-}
-
 /** Subscribe to auto-save events. Returns an incrementing counter (0 = no saves yet). */
 export function useAutoSaveEvent(): number {
-  return useSyncExternalStore(
-    (cb) => {
-      saveEventListeners.add(cb);
-      return () => saveEventListeners.delete(cb);
-    },
-    () => saveEventCounter,
-  );
-}
-
-function doAutoSaveTown() {
-  autoSaveTown();
-  notifySaveEvent();
-}
-
-function doAutoSaveDungeon() {
-  autoSaveDungeon();
-  notifySaveEvent();
+  return useSyncExternalStore(subscribeAutoSaveEvent, getAutoSaveEventCount);
 }
 
 export function useAutoSave(): void {
@@ -76,7 +56,7 @@ export function useAutoSave(): void {
         const currentScreen = useGameStore.getState().screen;
         const currentGuildId = useGuildStore.getState().currentGuildId;
         if (currentGuildId && TOWN_SCREENS.has(currentScreen)) {
-          doAutoSaveTown();
+          autoSaveTown();
         }
       }, DEBOUNCE_MS);
     }
@@ -98,7 +78,7 @@ export function useAutoSave(): void {
 
       const guildId = useGuildStore.getState().currentGuildId;
       if (guildId && TOWN_SCREENS.has(next)) {
-        doAutoSaveTown();
+        autoSaveTown();
       }
     });
     return () => unsubscribe();
@@ -118,7 +98,7 @@ export function useAutoSave(): void {
         const currentGuildId = useGuildStore.getState().currentGuildId;
         const currentDungeon = useDungeonStore.getState().dungeon;
         if (currentGuildId && currentScreen === 'dungeon' && currentDungeon) {
-          doAutoSaveDungeon();
+          autoSaveDungeon();
         }
       }, DEBOUNCE_MS);
     });

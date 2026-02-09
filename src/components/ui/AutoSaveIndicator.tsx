@@ -8,15 +8,15 @@ export function AutoSaveIndicator() {
   useEffect(() => {
     if (saveEvent === 0) return;
     setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 1200);
+    const timer = setTimeout(() => setVisible(false), 2000);
     return () => clearTimeout(timer);
   }, [saveEvent]);
 
   if (!visible) return null;
 
   return (
-    <div className="fixed top-2 right-2 text-xs text-gray-400 pointer-events-none">
-      Saving...
+    <div className="fixed bottom-3 right-3 text-xs font-bold text-ink border border-ink bg-paper px-2 py-1 pointer-events-none">
+      Saved
     </div>
   );
 }
