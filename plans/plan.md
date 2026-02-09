@@ -121,17 +121,29 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [x] Shop — buy equipment + consumables (Medica, Amrita, Theriaca) from unlocked inventory (2026-02-08)
 - [x] Shop — sell materials tab (2026-02-08)
 - [x] Guild / quest board: 10 quests (kill, gather, explore) with accept/track/claim flow (2026-02-08)
-- [x] Save/load system (Zustand persist middleware to localStorage for party, inventory, quests, game state) (2026-02-08)
-- [x] Title screen with Continue (if save exists) / New Game flow (2026-02-08)
+- ~~Save/load system (Zustand persist middleware to localStorage for party, inventory, quests, game state)~~ — replaced: multi-guild save system in Sprint 13
+- ~~Title screen with Continue (if save exists) / New Game flow~~ — replaced: redesigned title with New Game / Load Game in Sprint 13
 
 **5a-addendum — Inventory UI (done):**
 - [x] Inventory screen accessible from Town — tabbed view (Equipment / Items / Materials) showing all owned items with quantities and "Equipped by" indicators (2026-02-08)
 - [x] Added `'inventory'` to `GameScreen` type, registered in App.tsx router, added button to TownScreen (2026-02-08)
 
-**5b — Economy & Persistence Gaps (remaining):**
+**5b — Save System Redesign (done):**
+- [x] Multi-guild save system: 3 guilds, 3 save slots each, suspend saves for dungeon save & quit (2026-02-08)
+- [x] Save data types (SaveRegistry, GuildEntry, SaveData, SuspendSaveData) in `src/types/save.ts` (2026-02-08)
+- [x] Save system rewrite (`src/systems/save.ts`): registry, guild CRUD, slot CRUD, suspend saves, legacy migration (2026-02-08)
+- [x] Remove Zustand persist middleware from all 4 stores (gameStore, partyStore, inventoryStore, questStore) (2026-02-08)
+- [x] Guild store (`src/stores/guildStore.ts`) for runtime guild context (2026-02-08)
+- [x] Save actions bridge (`src/stores/saveActions.ts`): loadGameState, loadSuspendState, collectGameState, resetAllStores (2026-02-08)
+- [x] Title screen redesign: New Game → guild naming, Load Game → guild/slot picker, auto-migrate legacy saves (2026-02-08)
+- [x] Guild name screen, Load Game screen, Save Game screen (from Inn), ConfirmDialog component (2026-02-08)
+- [x] Dungeon Save & Quit: suspend save from DungeonHUD with confirmation dialog (2026-02-08)
+- [x] Town screen shows guild name (2026-02-08)
+- [x] 30 save system unit tests (2026-02-08)
+
+**5c — Economy & Persistence Gaps (remaining):**
 - [ ] Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound" drops rare material) — drop tables exist but no condition checking
 - [ ] Autosave at dungeon checkpoints (checkpoint tiles exist but don't trigger a save)
-- [ ] Dungeon progress persistence between sessions (explored tiles, current floor, player position — currently lost on refresh)
 - [ ] Dungeon floor selection from town (currently hardcoded to F1 — should resume last floor or let player choose unlocked floors)
 - [ ] Death penalty design (party wipe returns to town — define what's lost: gold percentage? consumables? nothing?)
 - [ ] Bind-cure consumable (Theriaca cures ailments but not binds — add "Therica B" or similar)
@@ -1055,6 +1067,83 @@ These systems were researched but intentionally excluded from MVP scope:
 **Screenshots:** 12 screenshots saved to `~/Desktop/blob-rpg-screenshots/` (01-12 series)
 
 **PR:** #18 — fix/equip-inventory-ui (branch from main, git worktree)
+
+### Sprint 13 — Multi-Guild Save System (2026-02-08)
+
+**Goal:** Replace Zustand persist middleware with an explicit multi-guild save system supporting named guilds, multiple save slots, dungeon suspend saves, and legacy data migration. Resolves issue #13.
+
+**Tasks:**
+
+**Types & Architecture:**
+- [x] Create `src/types/save.ts` with SaveRegistry, GuildEntry, GuildSlotIndex, SlotMeta, SaveData, SuspendSaveData interfaces (2026-02-08)
+- [x] Add `'guild-name' | 'load-game' | 'save-game'` to `GameScreen` type (2026-02-08)
+
+**Save System Rewrite (`src/systems/save.ts`):**
+- [x] Registry API: `getRegistry()`, `saveRegistry()`, `hasAnyGuilds()` (2026-02-08)
+- [x] Guild CRUD: `createGuild()`, `deleteGuild()`, `updateGuildLastPlayed()` — max 3 guilds (2026-02-08)
+- [x] Slot API: `saveToSlot()`, `loadSlot()`, `deleteSlot()`, `getSlotIndex()` — max 3 slots per guild (2026-02-08)
+- [x] Suspend API: `saveSuspend()`, `loadAndDeleteSuspend()`, `hasSuspendSave()` — one-shot, deleted on load (2026-02-08)
+- [x] Legacy migration: `migrateLegacySaves()`, `hasLegacySaveData()`, `clearLegacyKeys()` — unwraps Zustand persist envelope, creates "Legacy Guild" (2026-02-08)
+
+**Store Changes:**
+- [x] Remove `persist` middleware from gameStore, partyStore, inventoryStore, questStore (2026-02-08)
+- [x] Create `src/stores/guildStore.ts` — runtime guild context (currentGuildId, currentGuildName, lastLoadedSlotId) (2026-02-08)
+- [x] Create `src/stores/saveActions.ts` — bridge functions: loadGameState, loadSuspendState, collectGameState, collectSuspendState, resetAllStores (2026-02-08)
+- [x] Add `saveAndQuit` action to dungeonStore — creates suspend save, clears dungeon, returns to title (2026-02-08)
+
+**New UI Screens:**
+- [x] `GuildNameScreen` — text input for guild name + Begin/Back buttons (2026-02-08)
+- [x] `LoadGameScreen` — two-step: guild list → slot list, with suspend save highlight and delete guild option (2026-02-08)
+- [x] `SaveGameScreen` — slot picker from Inn, overwrite confirmation, delete slot, brief "Saved!" feedback (2026-02-08)
+- [x] `ConfirmDialog` — reusable confirmation modal (2026-02-08)
+
+**Existing Screen Modifications:**
+- [x] `TitleScreen` — redesigned: New Game → guild-name, Load Game → load-game, auto-migrates legacy saves in useState initializer (2026-02-08)
+- [x] `TownScreen` — shows guild name below heading (2026-02-08)
+- [x] `InnScreen` — added "Save Game" button (only when guild is active) (2026-02-08)
+- [x] `DungeonHUD` — added "Save" button with confirmation dialog for Save & Quit (2026-02-08)
+- [x] `DungeonScreen` — passes `saveAndQuit` to DungeonHUD (2026-02-08)
+- [x] `App.tsx` — registered 3 new screens (guild-name, load-game, save-game) (2026-02-08)
+
+**Tests:**
+- [x] 30 new save system tests covering registry, guild CRUD, slot CRUD, suspend saves, legacy migration (2026-02-08)
+- [x] All 384 tests passing (354 existing + 30 new) (2026-02-08)
+
+**localStorage Key Structure:**
+```
+blob-rpg-registry                       → SaveRegistry (guild index)
+blob-rpg-guild-<id>-slots               → GuildSlotIndex (slot metadata)
+blob-rpg-guild-<id>-slot-<slotId>       → SaveData (full game snapshot)
+blob-rpg-guild-<id>-suspend             → SuspendSaveData (dungeon save & quit)
+```
+
+**Files Created (8):**
+- `src/types/save.ts` — Save data schema and constants
+- `src/systems/save.ts` — Complete save system rewrite (was 25 lines, now 366)
+- `src/systems/save.test.ts` — 30 unit tests
+- `src/stores/guildStore.ts` — Runtime guild context
+- `src/stores/saveActions.ts` — Load/collect/reset bridge
+- `src/components/ui/GuildNameScreen.tsx` — Guild name input
+- `src/components/ui/LoadGameScreen.tsx` — Guild/slot picker
+- `src/components/town/SaveGameScreen.tsx` — Inn save slot picker
+- `src/components/ui/ConfirmDialog.tsx` — Reusable confirm modal
+
+**Files Modified (13):**
+- `src/types/game.ts` — Added 3 new screen types
+- `src/stores/gameStore.ts` — Removed persist
+- `src/stores/partyStore.ts` — Removed persist
+- `src/stores/inventoryStore.ts` — Removed persist
+- `src/stores/questStore.ts` — Removed persist
+- `src/stores/dungeonStore.ts` — Added saveAndQuit
+- `src/App.tsx` — Registered 3 new screens
+- `src/components/ui/TitleScreen.tsx` — Redesigned with guild flow
+- `src/components/town/TownScreen.tsx` — Shows guild name
+- `src/components/town/InnScreen.tsx` — Added Save Game button
+- `src/components/dungeon/DungeonHUD.tsx` — Added Save & Quit button
+- `src/components/dungeon/DungeonScreen.tsx` — Passes saveAndQuit to HUD
+- `plans/plan.md` — Sprint log + Phase 5b update
+
+**PR:** #20 — feat/save-system (branch from main, git worktree)
 
 ---
 
