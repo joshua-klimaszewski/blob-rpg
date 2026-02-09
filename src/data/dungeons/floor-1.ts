@@ -97,4 +97,17 @@ export const FLOOR_1: FloorData = {
   ],
   encounterRate: 8,
   encounterVariance: [2, 6],
+  encounterTable: {
+    random: [
+      { enemyId: 'slime', weight: 3 },
+      { enemyId: 'mossy-slime', weight: 1 },
+    ],
+    foe: [
+      { enemyId: 'slime', weight: 2 },
+      { enemyId: 'mossy-slime', weight: 2 },
+    ],
+    randomSize: [1, 2],
+    foeSize: [2, 3],
+  },
+  nextFloorId: 'verdant-depths-f2',
 }
