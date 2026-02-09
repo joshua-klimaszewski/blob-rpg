@@ -3,6 +3,7 @@ import type { FloorData, TileData } from '../../types/dungeon'
 // Shorthand constructors
 const W: TileData = { type: 'wall' }
 const F: TileData = { type: 'floor' }
+const N: TileData = { type: 'entrance' }
 const E: TileData = { type: 'exit' }
 const C: TileData = { type: 'checkpoint' }
 const S: TileData = { type: 'shortcut' }
@@ -13,7 +14,7 @@ const S: TileData = { type: 'shortcut' }
  * 17x17 grid. Three rooms connected by winding corridors.
  * One chase-pattern FOE (Venomblob).
  *
- * Layout (W=wall, .=floor, E=exit, C=checkpoint, S=shortcut, P=player start):
+ * Layout (W=wall, .=floor, N=entrance, E=exit, C=checkpoint, S=shortcut):
  *
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6
  * 0 W W W W W W W W W W W W W W W W W
@@ -28,7 +29,7 @@ const S: TileData = { type: 'shortcut' }
  * 9 W W W W W W W . W W W . W W W W W
  *10 W W W W . . . . . . . . . W W W W
  *11 W . . . . W W W W W W . W W W W W
- *12 W . P . . W W W W W W . . . S . W
+ *12 W . N . . W W W W W W . . . S . W
  *13 W . . . . W W W W W W W . . . . W
  *14 W . . . . . . W W W W W . . . . W
  *15 W . . . . W W W W W W W . . . . W
@@ -59,8 +60,8 @@ const tiles: TileData[][] = [
   [W, W, W, W, F, F, F, F, F, F, F, F, F, W, W, W, W],
   // Row 11: bottom-left room
   [W, F, F, F, F, W, W, W, W, W, W, F, W, W, W, W, W],
-  // Row 12: player start + shortcut on right
-  [W, F, F, F, F, W, W, W, W, W, W, F, F, F, S, F, W],
+  // Row 12: entrance + shortcut on right
+  [W, F, N, F, F, W, W, W, W, W, W, F, F, F, S, F, W],
   // Row 13
   [W, F, F, F, F, W, W, W, W, W, W, W, F, F, F, F, W],
   // Row 14: corridor south from bottom-left room

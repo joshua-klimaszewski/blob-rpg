@@ -9,14 +9,13 @@ interface EventNotificationProps {
 const EVENT_MESSAGES: Record<string, string> = {
   'reached-checkpoint': 'Checkpoint reached',
   'reached-shortcut': 'Shortcut unlocked',
-  'reached-exit': 'Floor complete!',
+  // entrance and exit now show prompts instead of notifications
 }
 
 export function EventNotification({ events, onDismiss }: EventNotificationProps) {
   const visibleEvents = events.filter(e =>
     e.type === 'reached-checkpoint' ||
-    e.type === 'reached-shortcut' ||
-    e.type === 'reached-exit'
+    e.type === 'reached-shortcut'
   )
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import type { FloorData, TileData } from '../../types/dungeon'
 // Shorthand constructors
 const W: TileData = { type: 'wall' }
 const F: TileData = { type: 'floor' }
+const N: TileData = { type: 'entrance' }
 const E: TileData = { type: 'exit' }
 const C: TileData = { type: 'checkpoint' }
 const S: TileData = { type: 'shortcut' }
@@ -12,7 +13,7 @@ const S: TileData = { type: 'shortcut' }
  *
  * 19x19 grid. Complex layout with dead ends and a boss-like stationary FOE.
  *
- * Layout (W=wall, .=floor, E=exit, C=checkpoint, S=shortcut, P=player start):
+ * Layout (W=wall, .=floor, N=entrance, E=exit, C=checkpoint, S=shortcut):
  *
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8
  * 0 W W W W W W W W W W W W W W W W W W W
@@ -32,7 +33,7 @@ const S: TileData = { type: 'shortcut' }
  *14 W . . S . W W . W W W W W W W . . . W
  *15 W W W W W W W . W W W W . . . . . . W
  *16 W W W W W W W . . . . . . W . . . . W
- *17 W . P . . . . . W W W W W W . . . . W
+ *17 W . N . . . . . W W W W W W . . . . W
  *18 W W W W W W W W W W W W W W W W W W W
  */
 const tiles: TileData[][] = [
@@ -70,8 +71,8 @@ const tiles: TileData[][] = [
   [W, W, W, W, W, W, W, F, W, W, W, W, F, F, F, F, F, F, W],
   // Row 16
   [W, W, W, W, W, W, W, F, F, F, F, F, F, W, F, F, F, F, W],
-  // Row 17: player start
-  [W, F, F, F, F, F, F, F, W, W, W, W, W, W, F, F, F, F, W],
+  // Row 17: entrance
+  [W, F, N, F, F, F, F, F, W, W, W, W, W, W, F, F, F, F, W],
   // Row 18
   [W, W, W, W, W, W, W, W, W, W, W, W, W, W, W, W, W, W, W],
 ]
