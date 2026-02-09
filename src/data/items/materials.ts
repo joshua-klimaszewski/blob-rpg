@@ -20,4 +20,28 @@ export const MATERIALS: MaterialDefinition[] = [
     description: 'A hardened core found in larger slimes. Somewhat rare.',
     sellPrice: 25,
   },
+  {
+    id: 'fungal-cap',
+    name: 'Fungal Cap',
+    description: 'A mushroom cap harvested from a Fungoid. Smells earthy.',
+    sellPrice: 15,
+  },
+  {
+    id: 'bat-wing',
+    name: 'Bat Wing',
+    description: 'A leathery wing membrane from a Sporebat.',
+    sellPrice: 12,
+  },
+  {
+    id: 'crystal-shard',
+    name: 'Crystal Shard',
+    description: 'A fragment of crystallized shell from a Crystal Beetle.',
+    sellPrice: 30,
+  },
+  {
+    id: 'tough-carapace',
+    name: 'Tough Carapace',
+    description: 'A section of hardened exoskeleton from a Caveworm.',
+    sellPrice: 20,
+  },
 ];
