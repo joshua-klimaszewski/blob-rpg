@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { useQuestStore } from './questStore';
 
 interface InventoryStore {
   /** Current gold balance */
@@ -98,6 +99,9 @@ export const useInventoryStore = create<InventoryStore>((set, get) => ({
       },
       gold: state.gold + quantity * pricePerUnit,
     }));
+
+    // Track gather quest progress
+    useQuestStore.getState().incrementGatherProgress(materialId, quantity);
   },
 
   addConsumable: (consumableId, quantity) => {

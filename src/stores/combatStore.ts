@@ -24,6 +24,7 @@ import {
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
 import { useInventoryStore } from './inventoryStore';
+import { useQuestStore } from './questStore';
 import { getEnemy } from '../data/enemies/index';
 import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
@@ -85,6 +86,18 @@ function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
     inventory.addGold(rewards.gold);
     for (const mat of rewards.materials) {
       inventory.addMaterial(mat.id, mat.quantity);
+    }
+
+    // Track kill quest progress (count defeated enemies by type)
+    const questStore = useQuestStore.getState();
+    const killCounts: Record<string, number> = {};
+    for (const enemy of state.enemies) {
+      if (enemy.hp <= 0) {
+        killCounts[enemy.definitionId] = (killCounts[enemy.definitionId] ?? 0) + 1;
+      }
+    }
+    for (const [enemyId, count] of Object.entries(killCounts)) {
+      questStore.incrementKillProgress(enemyId, count);
     }
 
     setTimeout(() => {
