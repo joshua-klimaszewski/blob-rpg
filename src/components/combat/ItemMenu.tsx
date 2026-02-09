@@ -56,9 +56,9 @@ export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
               key={member.id}
               type="button"
               onClick={() => handleAllySelect(member)}
-              disabled={member.hp <= 0 && selectedItem.effect.type !== 'cure-ailments'}
+              disabled={member.hp <= 0}
               className={`min-h-touch border-2 px-3 py-2 text-left text-sm
-                ${member.hp > 0 || selectedItem.effect.type === 'cure-ailments'
+                ${member.hp > 0
                   ? 'border-ink active:bg-ink active:text-paper'
                   : 'border-gray-300 text-gray-400'}
               `}
