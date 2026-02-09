@@ -22,7 +22,11 @@ export const ENEMY_SLIME: EnemyDefinition = {
   skills: ['slime-acid-splash', 'slime-sticky-slap'],
   aiPattern: 'aggressive',
   dropTable: {
-    materials: [],
+    materials: [
+      { materialId: 'slime-gel', chance: 0.6 },
+      { materialId: 'slime-core', chance: 0.15 },
+    ],
     xp: 20,
+    gold: { min: 5, max: 15 },
   },
 };

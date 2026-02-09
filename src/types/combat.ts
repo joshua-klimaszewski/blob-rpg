@@ -136,6 +136,8 @@ export interface BuffState {
 export interface CombatEntity {
   id: string;
   name: string;
+  /** Reference to the static definition (enemy ID or class ID) */
+  definitionId: string;
 
   /** Current/max HP */
   hp: number;
@@ -408,8 +410,9 @@ export interface EnemyDefinition {
   skills: string[]; // skill IDs (MVP: empty array)
   aiPattern: 'aggressive' | 'defensive' | 'random';
   dropTable: {
-    materials: string[];
+    materials: Array<{ materialId: string; chance: number }>;
     xp: number;
+    gold: { min: number; max: number };
   };
 }
 
@@ -455,5 +458,6 @@ export interface EncounterData {
 /** Combat rewards after victory */
 export interface CombatRewards {
   xp: number;
+  gold: number;
   materials: Array<{ id: string; quantity: number }>;
 }

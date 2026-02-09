@@ -130,6 +130,7 @@ function createTestEntity(overrides?: Partial<CombatEntity>): CombatEntity {
   return {
     id: 'test-entity',
     name: 'Test Entity',
+    definitionId: 'test',
     hp: 50,
     maxHp: 50,
     tp: 20,
@@ -1586,7 +1587,7 @@ function createTestEnemyDefinition(overrides?: Partial<EnemyDefinition>): EnemyD
     maxTp: 10,
     skills: [],
     aiPattern: 'aggressive',
-    dropTable: { materials: [], xp: 20 },
+    dropTable: { materials: [], xp: 20, gold: { min: 5, max: 15 } },
     ...overrides,
   };
 }
@@ -1945,30 +1946,47 @@ describe('executeAction', () => {
 });
 
 describe('calculateRewards', () => {
-  it('should calculate XP from defeated enemies', () => {
+  it('should calculate XP from defeated enemies using definitions', () => {
     const state = createTestState({
       enemies: [
-        createTestEntity({ hp: 0 }), // Dead
-        createTestEntity({ hp: 0 }), // Dead
+        createTestEntity({ definitionId: 'test-enemy', hp: 0 }),
+        createTestEntity({ definitionId: 'test-enemy', hp: 0 }),
       ],
     });
 
-    const rewards = calculateRewards(state);
+    const enemyDef = createTestEnemyDefinition();
+    const getEnemyDef = (id: string) => id === 'test-enemy' ? enemyDef : undefined;
+    const rewards = calculateRewards(state, () => 0.5, getEnemyDef);
 
-    // MVP: 100 base + 20 per enemy
-    expect(rewards.xp).toBe(140); // 100 + 20 + 20
-    expect(rewards.materials).toEqual([]);
+    // 20 XP per enemy from definition
+    expect(rewards.xp).toBe(40);
+    expect(rewards.gold).toBeGreaterThan(0);
   });
 
   it('should only count defeated enemies', () => {
     const state = createTestState({
       enemies: [
-        createTestEntity({ hp: 0 }), // Dead
-        createTestEntity({ hp: 50 }), // Alive
+        createTestEntity({ definitionId: 'test-enemy', hp: 0 }),
+        createTestEntity({ definitionId: 'test-enemy', hp: 50 }),
+      ],
+    });
+
+    const enemyDef = createTestEnemyDefinition();
+    const getEnemyDef = (id: string) => id === 'test-enemy' ? enemyDef : undefined;
+    const rewards = calculateRewards(state, () => 0.5, getEnemyDef);
+
+    expect(rewards.xp).toBe(20); // Only one dead enemy
+  });
+
+  it('falls back to defaults when no definition provided', () => {
+    const state = createTestState({
+      enemies: [
+        createTestEntity({ hp: 0 }),
       ],
     });
 
     const rewards = calculateRewards(state);
-    expect(rewards.xp).toBe(120); // 100 + 20 (only one enemy)
+    expect(rewards.xp).toBe(20);
+    expect(rewards.gold).toBe(10);
   });
 });
