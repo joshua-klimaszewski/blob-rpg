@@ -5,6 +5,7 @@ import { CombatScreen } from './components/combat/CombatScreen'
 import { CharacterSheet } from './components/character/CharacterSheet'
 import { PartyFormation } from './components/character/PartyFormation'
 import { InnScreen } from './components/town/InnScreen'
+import { ShopScreen } from './components/town/ShopScreen'
 
 const screens = {
   town: TownScreen,
@@ -13,6 +14,7 @@ const screens = {
   character: CharacterSheet,
   'party-formation': PartyFormation,
   inn: InnScreen,
+  shop: ShopScreen,
 } as const
 
 export function App() {
