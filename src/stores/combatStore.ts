@@ -17,7 +17,7 @@ import {
   initializeCombat,
   executeAction,
   executeEnemyTurn,
-  advanceTurn,
+  advanceToNextAlive,
   calculateRewards,
   defaultRNG,
 } from '../systems/combat';
@@ -199,8 +199,8 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
       return;
     }
 
-    // Atomically apply enemy action AND advance turn in one set() call
-    const advanced = advanceTurn(result.state);
+    // Atomically apply enemy action AND advance to next alive actor in one set() call
+    const advanced = advanceToNextAlive(result.state);
     set({
       combat: advanced,
       lastEvents: result.events,
@@ -211,7 +211,7 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
     const { combat } = get();
     if (!combat || combat.phase !== 'active') return;
 
-    const newState = advanceTurn(combat);
+    const newState = advanceToNextAlive(combat);
     set({ combat: newState });
   },
 
