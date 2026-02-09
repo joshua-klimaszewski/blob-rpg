@@ -15,7 +15,7 @@ interface ItemMenuProps {
 
 export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
   const consumables = useInventoryStore((s) => s.consumables);
-  const useConsumable = useInventoryStore((s) => s.useConsumable);
+  const consumeItem = useInventoryStore((s) => s.useConsumable);
   const [selectedItem, setSelectedItem] = useState<ConsumableDefinition | null>(null);
 
   const allConsumables = getAllConsumables();
@@ -30,7 +30,7 @@ export function ItemMenu({ actor, party, onUse, onCancel }: ItemMenuProps) {
     if (!combat) return;
 
     // Deduct consumable from inventory
-    useConsumable(selectedItem.id);
+    consumeItem(selectedItem.id);
 
     // Execute item effect in combat
     const result = executeItemAction(combat, actor.id, target.id, selectedItem);

@@ -268,6 +268,9 @@ export interface CombatState {
   /** Combo counter (increments on consecutive hits, resets on turn end) */
   comboCounter: number;
 
+  /** Current round number (increments when turn order wraps) */
+  round: number;
+
   /** Can the party flee from this encounter? */
   canFlee: boolean;
 }

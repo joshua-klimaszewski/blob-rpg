@@ -311,10 +311,12 @@ export function getNextAliveActor(state: CombatState): CombatEntity | null {
  */
 export function advanceTurn(state: CombatState): CombatState {
   const newIndex = (state.currentActorIndex + 1) % state.turnOrder.length;
+  const wrapped = newIndex === 0;
 
   return {
     ...state,
     currentActorIndex: newIndex,
+    round: wrapped ? state.round + 1 : state.round,
     turnOrder: state.turnOrder.map((entry, idx) => ({
       ...entry,
       hasActed: idx === newIndex ? false : entry.hasActed,
@@ -1071,6 +1073,7 @@ export function initializeCombat(encounter: EncounterData): CombatState {
     enemies,
     grid: gridWithEnemies,
     comboCounter: 0,
+    round: 1,
     canFlee: encounter.canFlee,
   };
 }
