@@ -39,13 +39,30 @@ export function ActionMenu({
     );
   }
 
-  // Attack or skill targeting mode: waiting for target selection
-  if (selectedAction === 'attack' || selectedAction === 'skill-targeting') {
-    const label = selectedAction === 'attack' ? 'Attack' : 'Use Skill';
+  // Attack targeting mode: tap enemy to attack immediately
+  if (selectedAction === 'attack') {
+    return (
+      <div className="px-4 py-3 border-t-2 border-ink bg-paper">
+        <div className="text-center text-sm mb-2">Tap an enemy to attack</div>
+        <div className="flex gap-2 justify-center max-w-xs mx-auto">
+          <button
+            type="button"
+            className="flex-1 min-h-touch border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Skill targeting mode: select tile then confirm
+  if (selectedAction === 'skill-targeting') {
     return (
       <div className="px-4 py-3 border-t-2 border-ink bg-paper">
         <div className="text-center text-sm mb-2">
-          {selectedTile ? `Tap ${label} to confirm` : 'Select a target'}
+          {selectedTile ? 'Tap Use Skill to confirm' : 'Select a target'}
         </div>
         <div className="flex gap-2 justify-center max-w-xs mx-auto">
           <button
@@ -56,7 +73,7 @@ export function ActionMenu({
             disabled={!selectedTile}
             onClick={onAttack}
           >
-            {label}
+            Use Skill
           </button>
           <button
             type="button"
