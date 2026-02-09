@@ -65,6 +65,7 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
 
     useGameStore.getState().setScreen('dungeon')
     useQuestStore.getState().completeExploreQuest(floorId)
+    useQuestStore.getState().markFloorReached(floorId)
   },
 
   move: (dir: Direction) => {
@@ -171,14 +172,14 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
 
     const { roster, activePartyIds } = usePartyStore.getState();
     const { gold, materials, soldMaterials, consumables, ownedEquipment } = useInventoryStore.getState();
-    const { activeQuests } = useQuestStore.getState();
+    const { activeQuests, floorsReached } = useQuestStore.getState();
     const { dungeonProgress } = useDungeonProgressStore.getState();
 
     const suspendData: Omit<SuspendSaveData, 'version' | 'guildId' | 'savedAt'> = {
       guildName: guildName ?? '',
       party: { roster, activePartyIds },
       inventory: { gold, materials, soldMaterials, consumables, ownedEquipment },
-      quests: { activeQuests },
+      quests: { activeQuests, floorsReached },
       dungeonProgress,
       dungeon: {
         floorId: dungeon.floorId,

@@ -13,12 +13,21 @@ export function ShopScreen() {
 
   return (
     <div className="flex flex-col items-center gap-4 p-6">
-      <h1 className="text-2xl font-bold border-b-2 border-ink pb-2">Shop</h1>
+      {/* Header with back button */}
+      <div className="flex justify-between items-center w-full max-w-half">
+        <h1 className="text-2xl font-bold">Shop</h1>
+        <button
+          onClick={() => setScreen('town')}
+          className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+        >
+          Back
+        </button>
+      </div>
 
       <div className="text-sm font-bold">Gold: {gold}G</div>
 
       {/* Tab bar */}
-      <div className="flex w-full max-w-xs">
+      <div className="flex w-full max-w-half">
         <button
           onClick={() => setTab('buy')}
           className={`flex-1 min-h-touch border-2 font-bold text-sm
@@ -38,16 +47,9 @@ export function ShopScreen() {
       </div>
 
       {/* Tab content */}
-      <div className="w-full max-w-xs">
+      <div className="w-full max-w-half">
         {tab === 'buy' ? <ShopBuyTab /> : <ShopSellTab />}
       </div>
-
-      <button
-        onClick={() => setScreen('town')}
-        className="min-h-touch border-2 border-ink px-4 py-3 font-bold w-full max-w-xs active:bg-ink active:text-paper"
-      >
-        Back
-      </button>
     </div>
   );
 }

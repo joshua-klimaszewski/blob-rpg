@@ -26,6 +26,14 @@
   --font-mono: "Courier New", Courier, monospace;
 }
 
+/* Responsive content width: full on mobile, 50vw on md+ */
+@utility max-w-half {
+  max-width: 100%;
+  @media (min-width: 768px) {
+    max-width: 50vw;
+  }
+}
+
 /* Base styles */
 html {
   font-family: var(--font-mono);

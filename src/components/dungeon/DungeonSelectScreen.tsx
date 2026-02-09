@@ -61,7 +61,7 @@ export function DungeonSelectScreen() {
       <h1 className="text-2xl font-bold border-b-2 border-ink pb-2">Dungeon</h1>
 
       {/* Floor list */}
-      <div className="w-full max-w-xs">
+      <div className="w-full max-w-half">
         <div className="text-xs font-bold mb-1">Floors</div>
         <div className="flex gap-2">
           {floors.map((floor) => {
@@ -89,7 +89,7 @@ export function DungeonSelectScreen() {
 
       {/* Floor detail */}
       {selectedFloor && (
-        <div className="w-full max-w-xs flex flex-col gap-3">
+        <div className="w-full max-w-half flex flex-col gap-3">
           {/* Minimap */}
           <FloorMinimap
             floor={selectedFloor}
@@ -124,7 +124,7 @@ export function DungeonSelectScreen() {
       )}
 
       {/* Action buttons */}
-      <div className="w-full max-w-xs flex flex-col gap-3 mt-auto">
+      <div className="w-full max-w-half flex flex-col gap-3 mt-auto">
         <button
           onClick={handleEnter}
           disabled={!selectedFloor || !isFloorUnlocked(selectedFloorId)}

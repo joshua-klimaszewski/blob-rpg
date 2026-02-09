@@ -32,7 +32,7 @@ export function CombatGrid({
   onDamageComplete,
 }: CombatGridProps) {
   return (
-    <div className="grid grid-cols-3 gap-1 w-full max-w-xs mx-auto">
+    <div className="grid grid-cols-3 gap-1 w-full max-w-half mx-auto">
       {[0, 1, 2].map((row) =>
         [0, 1, 2].map((col) => {
           const tile = combat.grid[row][col];

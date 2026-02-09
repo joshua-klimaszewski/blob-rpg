@@ -67,12 +67,20 @@ export function LoadGameScreen() {
 
     return (
       <div className="flex flex-col items-center h-dvh">
-        <h1 className="text-2xl font-bold border-b-2 border-ink pb-2 pt-6 px-6">
-          {selectedGuild.name}
-        </h1>
+        {/* Header with back button */}
+        <div className="flex justify-between items-center w-full max-w-half pt-6 px-6 pb-2">
+          <h1 className="text-2xl font-bold">{selectedGuild.name}</h1>
+          <button
+            onClick={() => setSelectedGuild(null)}
+            className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+          >
+            Back
+          </button>
+        </div>
+        <div className="w-full border-b-2 border-ink" />
 
         <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
-          <div className="flex flex-col gap-3 w-full max-w-xs">
+          <div className="flex flex-col gap-3 w-full max-w-half">
             {/* Suspend save (if exists) */}
             {selectedGuild.hasSuspendSave && (
               <button
@@ -109,18 +117,12 @@ export function LoadGameScreen() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 w-full max-w-xs px-6 pb-6 pt-3 border-t border-gray-200">
+        <div className="flex flex-col gap-3 w-full max-w-half px-6 pb-6 pt-3 border-t border-gray-200">
           <button
             onClick={() => handleDeleteGuild(selectedGuild)}
             className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
           >
             Delete Guild
-          </button>
-          <button
-            onClick={() => setSelectedGuild(null)}
-            className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-          >
-            Back
           </button>
         </div>
 
@@ -139,10 +141,20 @@ export function LoadGameScreen() {
   // Guild list view
   return (
     <div className="flex flex-col items-center h-dvh">
-      <h1 className="text-2xl font-bold border-b-2 border-ink pb-2 pt-6 px-6">Load Game</h1>
+      {/* Header with back button */}
+      <div className="flex justify-between items-center w-full max-w-half pt-6 px-6 pb-2">
+        <h1 className="text-2xl font-bold">Load Game</h1>
+        <button
+          onClick={() => setScreen('title')}
+          className="min-h-touch px-3 border-2 border-ink font-bold text-sm active:bg-ink active:text-paper"
+        >
+          Back
+        </button>
+      </div>
+      <div className="w-full border-b-2 border-ink" />
 
       <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
-        <div className="flex flex-col gap-3 w-full max-w-xs">
+        <div className="flex flex-col gap-3 w-full max-w-half">
           {registry.guilds.map((guild) => (
             <button
               key={guild.id}
@@ -167,15 +179,6 @@ export function LoadGameScreen() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="w-full max-w-xs px-6 pb-6 pt-3 border-t border-gray-200">
-        <button
-          onClick={() => setScreen('title')}
-          className="w-full min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
-        >
-          Back
-        </button>
       </div>
     </div>
   );

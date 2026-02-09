@@ -31,16 +31,16 @@ export const QUESTS: QuestDefinition[] = [
   {
     id: 'quest-slay-slimes-2',
     name: 'Slime Scourge',
-    description: 'Defeat 15 slimes total.',
+    description: 'Defeat 15 slimes total. Reward: Slime King\'s Crown.',
     objective: { type: 'kill', enemyId: 'slime', count: 15 },
-    reward: { gold: 120, xp: 250 },
+    reward: { gold: 120, xp: 250, equipmentId: 'slime-kings-crown' },
   },
   {
     id: 'quest-gather-core',
     name: 'Core Samples',
-    description: 'Sell 2 Slime Cores to the shop.',
+    description: 'Sell 2 Slime Cores to the shop. Reward: Core Harvester.',
     objective: { type: 'gather', materialId: 'slime-core', count: 2 },
-    reward: { gold: 80, xp: 150 },
+    reward: { gold: 80, xp: 150, equipmentId: 'core-harvester' },
   },
 
   // Floor 2 quests
@@ -50,6 +50,7 @@ export const QUESTS: QuestDefinition[] = [
     description: 'Defeat 5 Fungoids in the Fungal Passage.',
     objective: { type: 'kill', enemyId: 'fungoid', count: 5 },
     reward: { gold: 80, xp: 150 },
+    requiredFloor: 'verdant-depths-f2',
   },
   {
     id: 'quest-gather-caps',
@@ -57,6 +58,7 @@ export const QUESTS: QuestDefinition[] = [
     description: 'Sell 4 Fungal Caps to the shop.',
     objective: { type: 'gather', materialId: 'fungal-cap', count: 4 },
     reward: { gold: 60, xp: 120 },
+    requiredFloor: 'verdant-depths-f2',
   },
   {
     id: 'quest-explore-f2',
@@ -64,6 +66,7 @@ export const QUESTS: QuestDefinition[] = [
     description: 'Reach the Fungal Passage, Floor 2.',
     objective: { type: 'explore', floorId: 'verdant-depths-f2' },
     reward: { gold: 50, xp: 100 },
+    requiredFloor: 'verdant-depths-f2',
   },
 
   // Floor 3 quests
@@ -73,13 +76,33 @@ export const QUESTS: QuestDefinition[] = [
     description: 'Defeat 3 Crystal Beetles in the Crystal Depths.',
     objective: { type: 'kill', enemyId: 'crystal-beetle', count: 3 },
     reward: { gold: 120, xp: 250 },
+    requiredFloor: 'verdant-depths-f3',
   },
   {
     id: 'quest-explore-f3',
     name: 'Deep Descent',
-    description: 'Reach the Crystal Depths, Floor 3.',
+    description: 'Reach the Crystal Depths, Floor 3. Reward: Explorer\'s Lantern.',
     objective: { type: 'explore', floorId: 'verdant-depths-f3' },
-    reward: { gold: 100, xp: 200 },
+    reward: { gold: 100, xp: 200, equipmentId: 'explorers-lantern' },
+    requiredFloor: 'verdant-depths-f3',
+  },
+
+  // Challenge quests with equipment rewards
+  {
+    id: 'quest-slay-fungoids-2',
+    name: 'Fungal Warlord',
+    description: 'Defeat 12 Fungoids total. Reward: Fungal Spore Blade.',
+    objective: { type: 'kill', enemyId: 'fungoid', count: 12 },
+    reward: { gold: 100, xp: 200, equipmentId: 'fungal-spore-blade' },
+    requiredFloor: 'verdant-depths-f2',
+  },
+  {
+    id: 'quest-slay-beetles-2',
+    name: 'Crystal Crusher',
+    description: 'Defeat 8 Crystal Beetles total. Reward: Beetle Shell Aegis.',
+    objective: { type: 'kill', enemyId: 'crystal-beetle', count: 8 },
+    reward: { gold: 150, xp: 300, equipmentId: 'beetle-shell-aegis' },
+    requiredFloor: 'verdant-depths-f3',
   },
 ];
 
