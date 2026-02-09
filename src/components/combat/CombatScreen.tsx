@@ -20,7 +20,6 @@ export function CombatScreen() {
   const rewards = useCombatStore((s) => s.rewards);
   const selectAction = useCombatStore((s) => s.selectAction);
   const processEnemyTurnAndAdvance = useCombatStore((s) => s.processEnemyTurnAndAdvance);
-  const advanceToNext = useCombatStore((s) => s.advanceToNext);
 
   const { damageDisplays, message, removeDamage } = useCombatEvents();
 
@@ -48,18 +47,29 @@ export function CombatScreen() {
           .filter((s): s is SkillDefinition => s !== undefined && !s.isPassive)
       : [];
 
-  // Auto-process enemy turns
-  // advanceToNextAlive() guarantees the current actor is alive,
-  // so we only need to handle: enemy turn → auto-execute.
+  // Auto-process enemy turns with a ref guard to prevent double-execution.
+  // This is the ONLY setTimeout in the entire combat turn system.
+  // selectAction() advances atomically; this effect just adds a visual delay for enemies.
   const combatPhase = combat?.phase;
   const combatActorIndex = combat?.currentActorIndex;
   const currentIsEnemy = currentActor && !currentActor.isParty && isAlive(currentActor);
+  const enemyProcessingRef = useRef(false);
   useEffect(() => {
     if (combatPhase !== 'active') return;
     if (!currentIsEnemy) return;
 
-    const timer = setTimeout(() => processEnemyTurnAndAdvance(), 600);
-    return () => clearTimeout(timer);
+    // Guard: prevent double-execution if effect fires twice for same actor index
+    if (enemyProcessingRef.current) return;
+    enemyProcessingRef.current = true;
+
+    const timer = setTimeout(() => {
+      processEnemyTurnAndAdvance();
+      enemyProcessingRef.current = false;
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+      enemyProcessingRef.current = false;
+    };
   }, [combatActorIndex, combatPhase, currentIsEnemy, processEnemyTurnAndAdvance]);
 
   // Reset UI state when turn changes
@@ -84,11 +94,10 @@ export function CombatScreen() {
       });
       setSelectedTile(null);
       setSelectedAction(null);
-      setTimeout(() => advanceToNext(), 300);
     } else {
       setSelectedAction('attack');
     }
-  }, [selectedAction, selectedTile, currentActor, selectAction, advanceToNext]);
+  }, [selectedAction, selectedTile, currentActor, selectAction]);
 
   const handleSkillsButton = useCallback(() => {
     setShowSkillList(true);
@@ -106,55 +115,47 @@ export function CombatScreen() {
       // Route based on target type
       switch (skill.targetType) {
         case 'self': {
-          // Immediate: self-targeting skills execute right away
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — self-targeting ignores it
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'all-enemies': {
-          // Immediate: hits all enemies, no target selection needed
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — all-enemies resolves to full grid
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'all-allies': {
-          // Immediate: hits all allies
           selectAction({
             actorId: currentActor.id,
             type: 'skill',
             skillId: skill.id,
-            targetTile: [0, 0], // dummy tile — all-allies resolves to party list
+            targetTile: [0, 0],
           });
           setPendingSkill(null);
-          setTimeout(() => advanceToNext(), 300);
           break;
         }
         case 'single-ally': {
-          // Show ally selection mode
           setAllySelectMode(true);
           break;
         }
         case 'single-tile':
         case 'adjacent-tiles': {
-          // Enter tile targeting mode (like attack but for skill)
           setSelectedAction('skill-targeting');
           break;
         }
       }
     },
-    [currentActor, selectAction, advanceToNext]
+    [currentActor, selectAction]
   );
 
   const handleAllySelect = useCallback(
@@ -165,15 +166,12 @@ export function CombatScreen() {
         actorId: currentActor.id,
         type: 'skill',
         skillId: pendingSkill.id,
-        // Encode ally index as targetTile — the skill system resolves
-        // single-ally targeting by party index
         targetTile: [allyIndex, 0],
       });
       setAllySelectMode(false);
       setPendingSkill(null);
-      setTimeout(() => advanceToNext(), 300);
     },
-    [currentActor, pendingSkill, selectAction, advanceToNext]
+    [currentActor, pendingSkill, selectAction]
   );
 
   const handleSkillConfirm = useCallback(() => {
@@ -188,8 +186,7 @@ export function CombatScreen() {
     setSelectedTile(null);
     setSelectedAction(null);
     setPendingSkill(null);
-    setTimeout(() => advanceToNext(), 300);
-  }, [currentActor, pendingSkill, selectedTile, selectAction, advanceToNext]);
+  }, [currentActor, pendingSkill, selectedTile, selectAction]);
 
   const handleDefend = useCallback(() => {
     if (!currentActor) return;
@@ -199,8 +196,7 @@ export function CombatScreen() {
     });
     setSelectedTile(null);
     setSelectedAction(null);
-    setTimeout(() => advanceToNext(), 300);
-  }, [currentActor, selectAction, advanceToNext]);
+  }, [currentActor, selectAction]);
 
   const handleFlee = useCallback(() => {
     if (!currentActor) return;
@@ -229,8 +225,7 @@ export function CombatScreen() {
 
   const handleItemUse = useCallback(() => {
     setShowItemMenu(false);
-    setTimeout(() => advanceToNext(), 300);
-  }, [advanceToNext]);
+  }, []);
 
   if (!combat) {
     return (
