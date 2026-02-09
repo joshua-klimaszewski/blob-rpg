@@ -376,6 +376,7 @@ export function processTurn(
   // 2. Check tile type at new position
   const tile = getTile(floor, afterMove.playerPosition)
   if (tile) {
+    if (tile.type === 'entrance') events.push({ type: 'reached-entrance' })
     if (tile.type === 'exit') events.push({ type: 'reached-exit' })
     if (tile.type === 'checkpoint') events.push({ type: 'reached-checkpoint' })
     if (tile.type === 'shortcut') events.push({ type: 'reached-shortcut' })

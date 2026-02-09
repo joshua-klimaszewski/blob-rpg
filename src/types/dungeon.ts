@@ -12,7 +12,7 @@ export interface Position {
 // ---- Static floor data (lives in src/data/dungeons/) ----
 
 /** What kind of tile this is */
-export type TileType = 'floor' | 'wall' | 'exit' | 'checkpoint' | 'shortcut'
+export type TileType = 'floor' | 'wall' | 'entrance' | 'exit' | 'checkpoint' | 'shortcut'
 
 /** A single tile in the floor data definition */
 export interface TileData {
@@ -124,6 +124,7 @@ export interface DungeonState {
 export type DungeonEvent =
   | { readonly type: 'foe-collision'; readonly foeId: string }
   | { readonly type: 'random-encounter' }
+  | { readonly type: 'reached-entrance' }
   | { readonly type: 'reached-exit' }
   | { readonly type: 'reached-checkpoint' }
   | { readonly type: 'reached-shortcut' }

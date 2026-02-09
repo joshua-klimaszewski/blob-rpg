@@ -3,6 +3,7 @@ import type { FloorData, TileData } from '../../types/dungeon'
 // Shorthand constructors
 const W: TileData = { type: 'wall' }
 const F: TileData = { type: 'floor' }
+const N: TileData = { type: 'entrance' }
 const E: TileData = { type: 'exit' }
 const C: TileData = { type: 'checkpoint' }
 const S: TileData = { type: 'shortcut' }
@@ -12,7 +13,7 @@ const S: TileData = { type: 'shortcut' }
  *
  * 15x15 grid. Two rooms connected by corridors.
  *
- * Layout (W=wall, .=floor, E=exit, C=checkpoint, S=shortcut, P=player start):
+ * Layout (W=wall, .=floor, N=entrance, E=exit, C=checkpoint, S=shortcut):
  *
  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
  * 0 W W W W W W W W W W W W W W W
@@ -27,7 +28,7 @@ const S: TileData = { type: 'shortcut' }
  * 9 W W W W . W W W W W . W W W W
  *10 W . . . . . . . . . . . . S W
  *11 W . . . . W W W W W . . . . W
- *12 W . P . . W W W W W . . E . W
+ *12 W . N . . W W W W W . . E . W
  *13 W . . . . W W W W W . . . . W
  *14 W W W W W W W W W W W W W W W
  */
@@ -56,8 +57,8 @@ const tiles: TileData[][] = [
   [W, F, F, F, F, F, F, F, F, F, F, F, F, S, W],
   // Row 11: bottom rooms
   [W, F, F, F, F, W, W, W, W, W, F, F, F, F, W],
-  // Row 12: player start (left), exit (right)
-  [W, F, F, F, F, W, W, W, W, W, F, F, E, F, W],
+  // Row 12: entrance (left), exit (right)
+  [W, F, N, F, F, W, W, W, W, W, F, F, E, F, W],
   // Row 13
   [W, F, F, F, F, W, W, W, W, W, F, F, F, F, W],
   // Row 14: all walls

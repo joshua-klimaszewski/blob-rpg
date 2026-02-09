@@ -107,17 +107,8 @@ export const useDungeonStore = create<DungeonStore>((set, get) => ({
         if (floor.nextFloorId) {
           useDungeonProgressStore.getState().unlockFloor(floor.nextFloorId)
         }
-
-        // Transition to next floor or return to town
-        const nextFloorId = floor.nextFloorId;
-        setTimeout(() => {
-          if (nextFloorId) {
-            get().enterDungeon(nextFloorId);
-          } else {
-            get().warpToTown();
-          }
-        }, 2000); // Wait for "Floor complete!" notification
-        return;
+        // Don't auto-transition - let the UI prompt handle it
+        return
       }
     }
   },

@@ -1,15 +1,13 @@
 import type { TileType, TileVisibility } from '../../types/dungeon'
+import { DungeonTileIcon } from './DungeonTileIcon'
 
 interface DungeonTileProps {
   type: TileType
   visibility: TileVisibility
 }
 
-const TILE_ICONS: Partial<Record<TileType, string>> = {
-  exit: '\u2191',       // ↑ arrow up
-  checkpoint: '\u2691', // ⚑ flag
-  shortcut: '\u21C5',   // ⇅ up/down arrows
-}
+// Navigation tile types that show icons
+const NAVIGATION_TILES: TileType[] = ['entrance', 'exit', 'checkpoint', 'shortcut']
 
 export function DungeonTile({ type, visibility }: DungeonTileProps) {
   // Fog of war — never seen
@@ -31,27 +29,30 @@ export function DungeonTile({ type, visibility }: DungeonTileProps) {
     )
   }
 
+  const isNavigationTile = NAVIGATION_TILES.includes(type)
+
   // Explored floor — dimmed
   if (visibility === 'explored') {
     return (
       <div className="bg-gray-300 border border-gray-400 w-full h-full flex items-center justify-center">
-        {TILE_ICONS[type] && (
-          <span className="text-gray-500 text-xs leading-none">
-            {TILE_ICONS[type]}
-          </span>
+        {isNavigationTile && (
+          <DungeonTileIcon type={type} className="text-gray-500" />
         )}
+      </div>
+    )
+  }
+
+  // Visible navigation tile — inverted for emphasis
+  if (isNavigationTile) {
+    return (
+      <div className="bg-ink border-2 border-ink w-full h-full flex items-center justify-center">
+        <DungeonTileIcon type={type} className="text-paper" />
       </div>
     )
   }
 
   // Visible floor — bright white
   return (
-    <div className="bg-paper border border-gray-200 w-full h-full flex items-center justify-center">
-      {TILE_ICONS[type] && (
-        <span className="text-gray-500 text-xs leading-none">
-          {TILE_ICONS[type]}
-        </span>
-      )}
-    </div>
+    <div className="bg-paper border border-gray-200 w-full h-full flex items-center justify-center" />
   )
 }
