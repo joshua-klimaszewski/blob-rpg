@@ -105,7 +105,7 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 **4b — Character System Gaps (remaining):**
 - [ ] Hub-and-spoke skill tree visualization (currently a flat list — needs visual graph with branches, prerequisites, and category grouping)
-- [ ] Equipment management from character sheet (equip/unequip/swap — currently display-only, comment says "needs inventory UI")
+- [x] Equipment management from character sheet — inline EquipmentPicker opens on slot tap, shows owned items filtered by slot type, supports equip/unequip, tracks duplicates and prevents double-equipping across party (2026-02-08)
 - [ ] Passive skill auto-application (passives are defined in skill data but not applied to character stats — e.g. Ironblob's "Iron Wall" +VIT passive)
 - [ ] TP costs enforced in skill usage (verify TP is deducted and skills disabled when insufficient TP)
 - [ ] Level-up notification UI (visual feedback when a character levels up after combat)
@@ -123,6 +123,10 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [x] Guild / quest board: 10 quests (kill, gather, explore) with accept/track/claim flow (2026-02-08)
 - [x] Save/load system (Zustand persist middleware to localStorage for party, inventory, quests, game state) (2026-02-08)
 - [x] Title screen with Continue (if save exists) / New Game flow (2026-02-08)
+
+**5a-addendum — Inventory UI (done):**
+- [x] Inventory screen accessible from Town — tabbed view (Equipment / Items / Materials) showing all owned items with quantities and "Equipped by" indicators (2026-02-08)
+- [x] Added `'inventory'` to `GameScreen` type, registered in App.tsx router, added button to TownScreen (2026-02-08)
 
 **5b — Economy & Persistence Gaps (remaining):**
 - [ ] Conditional drops: specific loot only when killed under conditions (e.g. "killed while head-bound" drops rare material) — drop tables exist but no condition checking
@@ -1008,6 +1012,49 @@ These systems were researched but intentionally excluded from MVP scope:
 - `src/components/combat/CombatHUD.tsx` — Added `HelpButton` at right end
 
 **PR:** #12 — feat/help-screen (branch from main)
+
+### Sprint 12 — Equipment Picker & Inventory Screen (2026-02-08)
+
+**Goal:** Fix two related bugs — equipment slots do nothing when tapped (#14), and there's no way to view owned items (#15).
+
+**Tasks:**
+
+**Equipment Picker (fixes #14):**
+- [x] Create `EquipmentPicker` component — inline panel below tapped slot (2026-02-08)
+- [x] Filter owned items by slot type (weapons for weapon slot, accessories interchangeable between acc1/acc2) (2026-02-08)
+- [x] Track duplicates — if you own 2 of the same item and 1 is equipped elsewhere, only 1 shows available (2026-02-08)
+- [x] Wire `onSlotTap` in CharacterSheet (was empty no-op) to toggle picker (2026-02-08)
+- [x] Equip calls `partyStore.equipItem()` → stats recalculate with equipment bonuses (2026-02-08)
+- [x] Unequip option shown when item is currently equipped (2026-02-08)
+- [x] Current item marked with "(equipped)" label + gray background (2026-02-08)
+
+**Inventory Screen (fixes #15):**
+- [x] Create `InventoryScreen` component with 3 tabs: Equipment, Items (consumables), Materials (2026-02-08)
+- [x] Equipment tab shows owned items with descriptions and "Equipped by: [name]" indicators (2026-02-08)
+- [x] Items tab shows consumables with quantities (2026-02-08)
+- [x] Materials tab shows gathered materials with quantities (2026-02-08)
+- [x] Gold display in header (2026-02-08)
+- [x] Empty state messages for each tab (2026-02-08)
+- [x] Add `'inventory'` to `GameScreen` type, register in App.tsx, add button to TownScreen (2026-02-08)
+
+**Test Coverage:**
+- 354 tests passing (no regressions)
+- Build verified clean (`tsc -b && vite build`)
+- Visual testing with agent-browser: buy from shop → view in inventory → equip on character → verify stat change → unequip → verify revert
+
+**Files Created (2):**
+- `src/components/character/EquipmentPicker.tsx` — Inline equipment selection panel
+- `src/components/town/InventoryScreen.tsx` — Tabbed inventory viewer
+
+**Files Modified (4):**
+- `src/components/character/CharacterSheet.tsx` — Wired `onSlotTap` to EquipmentPicker
+- `src/App.tsx` — Registered InventoryScreen in screens map
+- `src/components/town/TownScreen.tsx` — Added Inventory button
+- `src/types/game.ts` — Added `'inventory'` to GameScreen union
+
+**Screenshots:** 12 screenshots saved to `~/Desktop/blob-rpg-screenshots/` (01-12 series)
+
+**PR:** #18 — fix/equip-inventory-ui (branch from main, git worktree)
 
 ---
 

@@ -9,6 +9,7 @@ import { ShopScreen } from './components/town/ShopScreen'
 import { GuildScreen } from './components/town/GuildScreen'
 import { TitleScreen } from './components/ui/TitleScreen'
 import { HowToPlayScreen } from './components/help/HowToPlayScreen'
+import { InventoryScreen } from './components/town/InventoryScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
 
 const screens = {
@@ -22,6 +23,7 @@ const screens = {
   shop: ShopScreen,
   guild: GuildScreen,
   'how-to-play': HowToPlayScreen,
+  inventory: InventoryScreen,
 } as const
 
 export function App() {
