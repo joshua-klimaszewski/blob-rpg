@@ -10,6 +10,12 @@ import {
   deleteGuild,
 } from '../../systems/save';
 import type { GuildEntry, SlotMeta } from '../../types/save';
+import { AUTOSAVE_SLOT_ID } from '../../types/save';
+
+function hasAutosave(guildId: string): boolean {
+  const idx = getSlotIndex(guildId);
+  return idx?.slots.some((s) => s.slotId === AUTOSAVE_SLOT_ID) ?? false;
+}
 
 export function LoadGameScreen() {
   const setScreen = useGameStore((s) => s.setScreen);
@@ -61,9 +67,11 @@ export function LoadGameScreen() {
   // Guild detail view
   if (selectedGuild) {
     const slotIndex = getSlotIndex(selectedGuild.id);
-    const slots = [...(slotIndex?.slots ?? [])].sort(
+    const allSlots = [...(slotIndex?.slots ?? [])].sort(
       (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
     );
+    const autosaveSlot = allSlots.find((s) => s.slotId === AUTOSAVE_SLOT_ID);
+    const slots = allSlots.filter((s) => s.slotId !== AUTOSAVE_SLOT_ID);
 
     return (
       <div className="flex flex-col items-center h-dvh">
@@ -81,7 +89,7 @@ export function LoadGameScreen() {
 
         <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
           <div className="flex flex-col gap-3 w-full max-w-half">
-            {/* Suspend save (if exists) */}
+            {/* Suspend save (if exists) — resume dungeon */}
             {selectedGuild.hasSuspendSave && (
               <button
                 onClick={() => handleLoadSuspend(selectedGuild)}
@@ -94,7 +102,23 @@ export function LoadGameScreen() {
               </button>
             )}
 
-            {/* Save slots */}
+            {/* Auto-save slot */}
+            {autosaveSlot && (
+              <button
+                onClick={() => handleLoadSlot(selectedGuild, autosaveSlot)}
+                className="min-h-touch border-2 border-ink px-4 py-3 text-left active:bg-ink active:text-paper"
+              >
+                <div className="flex justify-between">
+                  <span className="font-bold">Auto-save</span>
+                  <span className="text-sm">{autosaveSlot.summary.gold}G</span>
+                </div>
+                <div className="text-xs mt-1">
+                  Lv.{autosaveSlot.summary.partyLevel} · {formatDate(autosaveSlot.savedAt)}
+                </div>
+              </button>
+            )}
+
+            {/* Manual save slots */}
             {slots.map((slot) => (
               <button
                 key={slot.slotId}
@@ -109,7 +133,7 @@ export function LoadGameScreen() {
               </button>
             ))}
 
-            {slots.length === 0 && !selectedGuild.hasSuspendSave && (
+            {slots.length === 0 && !autosaveSlot && !selectedGuild.hasSuspendSave && (
               <div className="text-sm text-gray-500 text-center py-4">
                 No save slots found.
               </div>
@@ -155,23 +179,26 @@ export function LoadGameScreen() {
 
       <div className="flex-1 overflow-y-auto w-full flex justify-center py-6 px-6">
         <div className="flex flex-col gap-3 w-full max-w-half">
-          {registry.guilds.map((guild) => (
-            <button
-              key={guild.id}
-              onClick={() => handleSelectGuild(guild)}
-              className="min-h-touch border-2 border-ink px-4 py-3 text-left active:bg-ink active:text-paper"
-            >
-              <div className="flex justify-between items-center">
-                <span className="font-bold">{guild.name}</span>
-                {guild.hasSuspendSave && (
-                  <span className="text-xs border border-ink px-1">[!]</span>
-                )}
-              </div>
-              <div className="text-xs mt-1">
-                {guild.slotCount} save{guild.slotCount !== 1 ? 's' : ''} · Last played {formatDate(guild.lastPlayedAt)}
-              </div>
-            </button>
-          ))}
+          {registry.guilds.map((guild) => {
+            const totalSlots = guild.slotCount + (hasAutosave(guild.id) ? 1 : 0);
+            return (
+              <button
+                key={guild.id}
+                onClick={() => handleSelectGuild(guild)}
+                className="min-h-touch border-2 border-ink px-4 py-3 text-left active:bg-ink active:text-paper"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-bold">{guild.name}</span>
+                  {guild.hasSuspendSave && (
+                    <span className="text-xs border border-ink px-1">[!]</span>
+                  )}
+                </div>
+                <div className="text-xs mt-1">
+                  {totalSlots} save{totalSlots !== 1 ? 's' : ''} · Last played {formatDate(guild.lastPlayedAt)}
+                </div>
+              </button>
+            );
+          })}
 
           {registry.guilds.length === 0 && (
             <div className="text-sm text-gray-500 text-center py-4">
