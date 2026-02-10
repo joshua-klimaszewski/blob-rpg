@@ -190,6 +190,108 @@ export const ENEMY_SKILLS: SkillDefinition[] = [
       { type: 'bind', bindType: 'arm', chance: 0.5, duration: 3 },
     ],
   },
+
+  // === Basic Bind Skills (used by elite enemies) ===
+  {
+    id: 'leg-bind-basic',
+    name: 'Binding Strike',
+    description: 'Strike that may bind the target\'s legs.',
+    classId: 'enemy',
+    tpCost: 4,
+    targetType: 'single-tile',
+    bodyPartRequired: null,
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'str', multiplier: 0.7 },
+      { type: 'bind', bindType: 'leg', chance: 0.4, duration: 2 },
+    ],
+  },
+  {
+    id: 'arm-bind-basic',
+    name: 'Grappling Strike',
+    description: 'Strike that may bind the target\'s arms.',
+    classId: 'enemy',
+    tpCost: 4,
+    targetType: 'single-tile',
+    bodyPartRequired: null,
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'str', multiplier: 0.7 },
+      { type: 'bind', bindType: 'arm', chance: 0.5, duration: 2 },
+    ],
+  },
+
+  // === Elite Fungoid Skills ===
+  {
+    id: 'fungal-spores',
+    name: 'Fungal Spores',
+    description: 'Releases a dense cloud of sleep-inducing spores.',
+    classId: 'enemy',
+    tpCost: 6,
+    targetType: 'adjacent-tiles',
+    bodyPartRequired: 'head',
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'int', multiplier: 0.8 },
+      { type: 'ailment', ailmentType: 'sleep', chance: 60, duration: 2 },
+    ],
+  },
+  {
+    id: 'paralyzing-pollen',
+    name: 'Paralyzing Pollen',
+    description: 'Releases pollen that may paralyze the target.',
+    classId: 'enemy',
+    tpCost: 5,
+    targetType: 'single-tile',
+    bodyPartRequired: 'head',
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'int', multiplier: 0.6 },
+      { type: 'ailment', ailmentType: 'paralyze', chance: 50, duration: 2 },
+    ],
+  },
+  {
+    id: 'poison-cloud',
+    name: 'Poison Cloud',
+    description: 'Releases a toxic cloud that poisons nearby targets.',
+    classId: 'enemy',
+    tpCost: 6,
+    targetType: 'adjacent-tiles',
+    bodyPartRequired: 'head',
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'int', multiplier: 0.7 },
+      { type: 'ailment', ailmentType: 'poison', chance: 70, damagePerTurn: 5, duration: 3 },
+    ],
+  },
+
+  // === Elite Crystal Beetle Skills ===
+  {
+    id: 'push-back',
+    name: 'Push Back',
+    description: 'Strikes the target and pushes them backward.',
+    classId: 'enemy',
+    tpCost: 4,
+    targetType: 'single-tile',
+    bodyPartRequired: null,
+    levelRequired: 1,
+    skillPointCost: 0,
+    isPassive: false,
+    effects: [
+      { type: 'damage', stat: 'str', multiplier: 1.0 },
+      { type: 'displacement', direction: 'push', distance: 1 },
+    ],
+  },
 ];
 
 const ENEMY_SKILL_REGISTRY: Record<string, SkillDefinition> = {};

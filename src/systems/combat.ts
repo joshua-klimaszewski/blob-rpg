@@ -1278,7 +1278,7 @@ export function executeAction(
   state: CombatState,
   action: Action,
   rng: RNG = defaultRNG,
-  skillLookup?: (id: string) => SkillDefinition
+  skillLookup?: (id: string) => SkillDefinition | undefined
 ): ActionResult {
   // Validate actor is alive
   const actor = findEntity(state, action.actorId);
@@ -1372,7 +1372,7 @@ export function executeEnemyTurn(
   state: CombatState,
   actorId: string,
   rng: RNG = defaultRNG,
-  skillLookup?: (id: string) => SkillDefinition,
+  skillLookup?: (id: string) => SkillDefinition | undefined,
   getEnemyDef?: (id: string) => EnemyDefinition | undefined,
 ): ActionResult {
   const actor = findEntity(state, actorId);
@@ -2001,7 +2001,7 @@ export function executeSkillAction(
   skillId: string,
   targetTile: GridPosition,
   rng: RNG = defaultRNG,
-  skillLookup?: (id: string) => SkillDefinition
+  skillLookup?: (id: string) => SkillDefinition | undefined
 ): ActionResult {
   const actor = findEntity(state, actorId);
   if (!actor || !isAlive(actor)) {
@@ -2009,12 +2009,13 @@ export function executeSkillAction(
   }
 
   // Look up skill (use provided lookup or lazy import)
-  let skill: SkillDefinition;
+  let skill: SkillDefinition | undefined;
   if (skillLookup) {
     skill = skillLookup(skillId);
-  } else {
-    // Dynamic import alternative: caller should provide lookup
-    // For now, this is a fallback that allows test injection
+  }
+
+  if (!skill) {
+    // Skill not found — return early with no action
     return { state, events: [] };
   }
 
