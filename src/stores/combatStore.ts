@@ -32,15 +32,20 @@ import type { SkillDefinition } from '../types/character';
 import { getPassiveModifiers } from '../systems/character';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
-function lookupSkill(id: string): SkillDefinition {
+function lookupSkill(id: string): SkillDefinition | undefined {
   try {
     return getSkill(id);
   } catch {
     // Not a player skill — check enemy skills
   }
   const enemySkill = getEnemySkill(id);
-  if (enemySkill) return enemySkill;
-  throw new Error(`Unknown skill ID: ${id}`);
+
+  // Warn in development if skill not found
+  if (!enemySkill && import.meta.env.DEV) {
+    console.warn(`[Combat] Skill not found: "${id}" — falling back to basic attack`);
+  }
+
+  return enemySkill; // Returns undefined if not found (no throw)
 }
 
 interface CombatStore {

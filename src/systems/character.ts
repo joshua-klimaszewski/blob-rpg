@@ -127,7 +127,7 @@ export function processLevelUps(
 // ============================================================================
 
 /** Skill lookup function signature */
-export type SkillLookup = (id: string) => SkillDefinition;
+export type SkillLookup = (id: string) => SkillDefinition | undefined;
 
 /**
  * Get flat stat bonuses from learned passive skills.

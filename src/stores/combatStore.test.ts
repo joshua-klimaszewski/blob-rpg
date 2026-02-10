@@ -289,4 +289,67 @@ describe('CombatStore', () => {
       expect(useCombatStore.getState().lastEvents).toEqual([]);
     });
   });
+
+  describe('missing skill handling', () => {
+    it('should handle combat initialization when enemy has missing skills', () => {
+      const encounter: EncounterData = {
+        party: [createTestPartyMember()],
+        enemies: [
+          {
+            definition: {
+              ...createTestEnemyDefinition(),
+              skills: ['missing-skill-id'], // Non-existent skill
+            },
+            instanceId: 'enemy-1',
+            position: [1, 1],
+          },
+        ],
+        canFlee: true,
+      };
+
+      const store = useCombatStore.getState();
+
+      // Should not throw when initializing combat with missing skills
+      expect(() => store.startCombat(encounter)).not.toThrow();
+
+      const state = useCombatStore.getState();
+      expect(state.combat).not.toBeNull();
+      expect(state.combat?.phase).toBe('active');
+      expect(state.combat?.enemies[0].skills).toContain('missing-skill-id');
+    });
+
+    it('should fall back to basic attack when enemy skills are missing', () => {
+      const encounter: EncounterData = {
+        party: [
+          createTestPartyMember({
+            stats: { str: 5, vit: 10, int: 10, wis: 10, agi: 1, luc: 10 }, // Low AGI so enemy goes first
+          }),
+        ],
+        enemies: [
+          {
+            definition: {
+              ...createTestEnemyDefinition({
+                maxHp: 100, // Sturdy enemy so it doesn't die immediately
+                stats: { str: 5, vit: 10, int: 10, wis: 10, agi: 20, luc: 10 }, // High AGI
+              }),
+              skills: ['non-existent-skill-1', 'non-existent-skill-2'], // All skills missing
+            },
+            instanceId: 'enemy-1',
+            position: [1, 1],
+          },
+        ],
+        canFlee: true,
+      };
+
+      const store = useCombatStore.getState();
+      store.startCombat(encounter);
+
+      // The enemy should still be able to act with a basic attack
+      // Combat should initialize successfully despite missing skills
+      const state = useCombatStore.getState();
+      expect(state.combat).not.toBeNull();
+      expect(state.combat?.phase).toBe('active');
+      expect(state.combat?.enemies[0].skills).toEqual(['non-existent-skill-1', 'non-existent-skill-2']);
+    });
+  });
 });
