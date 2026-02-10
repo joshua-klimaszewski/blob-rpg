@@ -66,6 +66,7 @@ import {
   calculateRewards,
   type RNG,
 } from './combat';
+import type { SkillDefinition } from '../types/character';
 import type {
   ParalyzeData,
   SleepData,
@@ -2688,5 +2689,153 @@ describe('Turn Flow Integration', () => {
       const advanced = advanceToNextAlive(result.state);
       expect(advanced.currentActorIndex).toBe(0);
     }
+  });
+});
+
+// ============================================================================
+// Missing Skill Fallback Tests
+// ============================================================================
+
+describe('executeEnemyTurn with missing skills', () => {
+  const fixedRNG: RNG = () => 0.1; // Low value to ensure skill usage is attempted
+
+  it('should fall back to basic attack when all skills are undefined', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const enemy1 = createTestEntity({
+      id: 'e1',
+      name: 'Elite Enemy',
+      hp: 30,
+      maxHp: 30,
+      position: [1, 1],
+      skills: ['missing-skill-1', 'missing-skill-2'], // These skills don't exist
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [enemy1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 12, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    // Skill lookup that returns undefined for missing skills
+    const skillLookup = (id: string): SkillDefinition | undefined => {
+      if (id === 'missing-skill-1' || id === 'missing-skill-2') {
+        return undefined;
+      }
+      throw new Error(`Unexpected skill lookup: ${id}`);
+    };
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG, skillLookup);
+
+    // Should execute basic attack instead of hanging
+    expect(result.events.length).toBeGreaterThan(0);
+
+    // Should produce damage event (basic attack)
+    const dmgEvent = result.events.find((e) => e.type === 'damage');
+    expect(dmgEvent).toBeDefined();
+    expect((dmgEvent as DamageEvent).targetId).toBe('p1');
+
+    // Turn should be marked as acted
+    const turnEntry = result.state.turnOrder.find((e) => e.entityId === 'e1');
+    expect(turnEntry?.hasActed).toBe(true);
+  });
+
+  it('should use valid skills and ignore undefined ones', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const enemy1 = createTestEntity({
+      id: 'e1',
+      name: 'Enemy',
+      hp: 30,
+      maxHp: 30,
+      tp: 10,
+      maxTp: 10,
+      position: [1, 1],
+      skills: ['missing-skill', 'valid-skill'], // Mix of missing and valid
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [enemy1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 12, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    const validSkill: SkillDefinition = {
+      id: 'valid-skill',
+      name: 'Valid Attack',
+      description: 'A valid skill',
+      classId: 'enemy',
+      tpCost: 3,
+      targetType: 'single-tile',
+      bodyPartRequired: null,
+      levelRequired: 1,
+      skillPointCost: 0,
+      isPassive: false,
+      effects: [{ type: 'damage', stat: 'str', multiplier: 1.0 }],
+    };
+
+    const skillLookup = (id: string): SkillDefinition | undefined => {
+      if (id === 'missing-skill') return undefined;
+      if (id === 'valid-skill') return validSkill;
+      throw new Error(`Unexpected skill lookup: ${id}`);
+    };
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG, skillLookup);
+
+    // Should execute the valid skill
+    expect(result.events.length).toBeGreaterThan(0);
+    const dmgEvent = result.events.find((e) => e.type === 'damage');
+    expect(dmgEvent).toBeDefined();
+
+    // Turn should be marked as acted
+    const turnEntry = result.state.turnOrder.find((e) => e.entityId === 'e1');
+    expect(turnEntry?.hasActed).toBe(true);
+  });
+
+  it('should handle enemy with no skills array gracefully', () => {
+    const party1 = createTestEntity({ id: 'p1', hp: 50, maxHp: 50, isParty: true, position: null });
+    const enemy1 = createTestEntity({
+      id: 'e1',
+      name: 'Basic Enemy',
+      hp: 30,
+      maxHp: 30,
+      position: [1, 1],
+      skills: [], // No skills at all
+    });
+
+    let grid = createEmptyGrid();
+    grid = addEntityToTile(grid, 'e1', [1, 1]);
+
+    const state = createTestState({
+      party: [party1],
+      enemies: [enemy1],
+      grid,
+      turnOrder: [
+        { entityId: 'p1', speed: 12, hasActed: true, isDefending: false },
+        { entityId: 'e1', speed: 10, hasActed: false, isDefending: false },
+      ],
+      currentActorIndex: 1,
+    });
+
+    const result = executeEnemyTurn(state, 'e1', fixedRNG);
+
+    // Should execute basic attack
+    expect(result.events.length).toBeGreaterThan(0);
+    const dmgEvent = result.events.find((e) => e.type === 'damage');
+    expect(dmgEvent).toBeDefined();
   });
 });
