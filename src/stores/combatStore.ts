@@ -39,6 +39,12 @@ function lookupSkill(id: string): SkillDefinition | undefined {
     // Not a player skill — check enemy skills
   }
   const enemySkill = getEnemySkill(id);
+
+  // Warn in development if skill not found
+  if (!enemySkill && import.meta.env.DEV) {
+    console.warn(`[Combat] Skill not found: "${id}" — falling back to basic attack`);
+  }
+
   return enemySkill; // Returns undefined if not found (no throw)
 }
 
