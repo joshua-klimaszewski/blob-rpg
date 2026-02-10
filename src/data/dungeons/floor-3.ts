@@ -102,8 +102,8 @@ export const FLOOR_3: FloorData = {
       { enemyId: 'sporebat', weight: 1 },
     ],
     foe: [
-      { enemyId: 'crystal-beetle', weight: 2 },
-      { enemyId: 'caveworm', weight: 2 },
+      { enemyId: 'elite-crystal-beetle', weight: 3 },
+      { enemyId: 'elite-caveworm', weight: 2 },
     ],
     randomSize: [2, 4],
     foeSize: [3, 4],

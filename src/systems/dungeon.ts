@@ -287,7 +287,13 @@ export function moveFoes(
   floor: FloorData,
 ): DungeonState {
   const newFoes = state.foes.map((foe) => {
-    switch (foe.pattern) {
+    // Patrol FOEs switch to chase when aggro'd
+    const effectivePattern =
+      foe.pattern === 'patrol' && foe.aggroState === 'aggro'
+        ? 'chase'
+        : foe.pattern
+
+    switch (effectivePattern) {
       case 'patrol':
         return movePatrolFoe(foe)
       case 'chase':
@@ -297,6 +303,64 @@ export function moveFoes(
     }
   })
   return { ...state, foes: newFoes }
+}
+
+// ---- FOE aggro detection ----
+
+/** Default detection radius for FOEs (Manhattan distance) */
+export const DEFAULT_DETECTION_RADIUS = 3
+
+/**
+ * Check if a FOE can detect the player (within radius + line of sight).
+ * Uses computeVisibleTiles from FOE's perspective to check line of sight.
+ */
+export function canFoeDetectPlayer(
+  foe: FoeState,
+  playerPos: Position,
+  floor: FloorData,
+): boolean {
+  const dist = distance(foe.position, playerPos)
+  if (dist > foe.detectionRadius) return false
+
+  // Check line of sight from FOE's position
+  const visibleFromFoe = computeVisibleTiles(foe.position, floor, foe.detectionRadius)
+  return visibleFromFoe.has(positionKey(playerPos))
+}
+
+/**
+ * Update FOE aggro states based on player position.
+ * Returns new FOEs array and list of newly aggro'd FOE IDs.
+ */
+export function updateFoeAggro(
+  foes: FoeState[],
+  playerPos: Position,
+  floor: FloorData,
+): { foes: FoeState[]; newlyAggrod: string[] } {
+  const newlyAggrod: string[] = []
+  const DE_AGGRO_BONUS = 2 // Extra tiles needed to de-aggro
+
+  const updatedFoes = foes.map((foe) => {
+    const canDetect = canFoeDetectPlayer(foe, playerPos, floor)
+    const dist = distance(foe.position, playerPos)
+
+    // Trigger aggro if detected and not already aggro'd
+    if (canDetect && foe.aggroState === 'patrol') {
+      newlyAggrod.push(foe.id)
+      return { ...foe, aggroState: 'aggro' as const }
+    }
+
+    // De-aggro if player escapes beyond detection radius + bonus
+    if (
+      foe.aggroState === 'aggro' &&
+      dist > foe.detectionRadius + DE_AGGRO_BONUS
+    ) {
+      return { ...foe, aggroState: 'patrol' as const }
+    }
+
+    return foe
+  })
+
+  return { foes: updatedFoes, newlyAggrod }
 }
 
 // ---- FOE collision ----
@@ -385,20 +449,33 @@ export function processTurn(
   // 3. Move FOEs
   const afterFoes = moveFoes(afterMove, floor)
 
-  // 4. Check FOE collision
-  const collidedFoeId = checkFoeCollision(afterFoes)
+  // 4. Update FOE aggro states
+  const { foes: foesWithAggro, newlyAggrod } = updateFoeAggro(
+    afterFoes.foes,
+    afterMove.playerPosition,
+    floor,
+  )
+  const afterAggro: DungeonState = { ...afterFoes, foes: foesWithAggro }
+
+  // Add aggro events for newly aggro'd FOEs
+  for (const foeId of newlyAggrod) {
+    events.push({ type: 'foe-aggro', foeId })
+  }
+
+  // 5. Check FOE collision
+  const collidedFoeId = checkFoeCollision(afterAggro)
   if (collidedFoeId) {
     events.push({ type: 'foe-collision', foeId: collidedFoeId })
   }
 
-  // 5. Tick encounter gauge
+  // 6. Tick encounter gauge
   const { gauge: newGauge, triggered } = tickEncounterGauge(
-    afterFoes.encounterGauge,
+    afterAggro.encounterGauge,
     floor,
     rng,
   )
   const afterGauge: DungeonState = {
-    ...afterFoes,
+    ...afterAggro,
     encounterGauge: newGauge,
   }
 
@@ -406,7 +483,7 @@ export function processTurn(
     events.push({ type: 'random-encounter' })
   }
 
-  // 6. Update fog of war
+  // 7. Update fog of war
   const newVisible = computeVisibleTiles(afterGauge.playerPosition, floor)
   const newExplored = updateExploredTiles(afterGauge.exploredTiles, newVisible)
   const finalState: DungeonState = newExplored === afterGauge.exploredTiles
@@ -464,6 +541,8 @@ export function initializeDungeonState(
       patrolIndex: 0,
       patrolDirection: 1 as const,
       name: spawn.name,
+      detectionRadius: spawn.detectionRadius ?? DEFAULT_DETECTION_RADIUS,
+      aggroState: 'patrol' as const,
     })),
     encounterGauge: resetEncounterGauge(),
     facing: 'north',

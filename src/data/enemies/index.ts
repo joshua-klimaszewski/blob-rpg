@@ -9,6 +9,11 @@ import { ENEMY_FUNGOID } from './fungoid';
 import { ENEMY_SPOREBAT } from './sporebat';
 import { ENEMY_CRYSTAL_BEETLE } from './crystal-beetle';
 import { ENEMY_CAVEWORM } from './caveworm';
+import { ENEMY_ELITE_SLIME } from './elite-slime';
+import { ENEMY_ELITE_MOSSY_SLIME } from './elite-mossy-slime';
+import { ENEMY_ELITE_FUNGOID } from './elite-fungoid';
+import { ENEMY_ELITE_CRYSTAL_BEETLE } from './elite-crystal-beetle';
+import { ENEMY_ELITE_CAVEWORM } from './elite-caveworm';
 
 const ALL_ENEMIES: EnemyDefinition[] = [
   ENEMY_SLIME,
@@ -17,6 +22,11 @@ const ALL_ENEMIES: EnemyDefinition[] = [
   ENEMY_SPOREBAT,
   ENEMY_CRYSTAL_BEETLE,
   ENEMY_CAVEWORM,
+  ENEMY_ELITE_SLIME,
+  ENEMY_ELITE_MOSSY_SLIME,
+  ENEMY_ELITE_FUNGOID,
+  ENEMY_ELITE_CRYSTAL_BEETLE,
+  ENEMY_ELITE_CAVEWORM,
 ];
 
 const ENEMY_REGISTRY: Record<string, EnemyDefinition> = {};

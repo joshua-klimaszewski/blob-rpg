@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useDungeonStore } from '../../stores/dungeonStore'
 import { DungeonViewport } from './DungeonViewport'
 import { DungeonHUD } from './DungeonHUD'
@@ -6,6 +6,29 @@ import { EncounterGauge } from './EncounterGauge'
 import { EventNotification } from './EventNotification'
 import { NavigationPrompt } from './NavigationPrompt'
 import { useDirectionInput } from '../../hooks/useDirectionInput'
+
+// Simple audio notification for FOE aggro
+function playAggroSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+
+    oscillator.frequency.value = 800 // High-pitched alert tone
+    oscillator.type = 'sine'
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
+
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.2)
+  } catch (e) {
+    // Silently fail if audio context not available
+  }
+}
 
 export function DungeonScreen() {
   const dungeon = useDungeonStore((s) => s.dungeon)
@@ -35,6 +58,14 @@ export function DungeonScreen() {
   }
 
   useDirectionInput(handleMove)
+
+  // Play audio notification when FOE aggros
+  useEffect(() => {
+    const hasAggroEvent = lastEvents.some((e) => e.type === 'foe-aggro')
+    if (hasAggroEvent) {
+      playAggroSound()
+    }
+  }, [lastEvents])
 
   const handleNextFloor = () => {
     if (!floor?.nextFloorId) return

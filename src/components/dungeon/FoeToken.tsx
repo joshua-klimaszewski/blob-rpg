@@ -1,10 +1,13 @@
+import type { FoeAggroState } from '../../types/dungeon'
+
 interface FoeTokenProps {
   cellSize: number
   gridX: number
   gridY: number
+  aggroState: FoeAggroState
 }
 
-export function FoeToken({ cellSize, gridX, gridY }: FoeTokenProps) {
+export function FoeToken({ cellSize, gridX, gridY, aggroState }: FoeTokenProps) {
   const half = cellSize / 2
   const pad = cellSize * 0.2
 
@@ -15,9 +18,11 @@ export function FoeToken({ cellSize, gridX, gridY }: FoeTokenProps) {
     `${pad},${cellSize - pad}`,
   ].join(' ')
 
+  const isAggro = aggroState === 'aggro'
+
   return (
     <svg
-      className="absolute pointer-events-none"
+      className={`absolute pointer-events-none ${isAggro ? 'animate-pulse' : ''}`}
       style={{
         left: gridX * cellSize,
         top: gridY * cellSize,
@@ -27,10 +32,21 @@ export function FoeToken({ cellSize, gridX, gridY }: FoeTokenProps) {
     >
       <polygon
         points={points}
-        fill="#737373"
-        stroke="black"
-        strokeWidth={1.5}
+        fill={isAggro ? '#dc2626' : '#737373'}
+        stroke={isAggro ? '#991b1b' : 'black'}
+        strokeWidth={isAggro ? 2 : 1.5}
       />
+      {isAggro && (
+        <text
+          x={half}
+          y={pad / 2}
+          textAnchor="middle"
+          fontSize={cellSize * 0.3}
+          fill="#fca5a5"
+        >
+          !
+        </text>
+      )}
     </svg>
   )
 }

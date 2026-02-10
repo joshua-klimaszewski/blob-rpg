@@ -55,6 +55,7 @@ export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
             cellSize={cellSize}
             gridX={foe.position.x}
             gridY={foe.position.y}
+            aggroState={foe.aggroState}
           />
         ))}
 

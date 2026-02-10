@@ -104,8 +104,8 @@ export const FLOOR_1: FloorData = {
       { enemyId: 'mossy-slime', weight: 1 },
     ],
     foe: [
-      { enemyId: 'slime', weight: 2 },
-      { enemyId: 'mossy-slime', weight: 2 },
+      { enemyId: 'elite-slime', weight: 3 },
+      { enemyId: 'elite-mossy-slime', weight: 2 },
     ],
     randomSize: [1, 2],
     foeSize: [2, 3],

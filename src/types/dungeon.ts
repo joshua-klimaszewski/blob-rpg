@@ -24,6 +24,9 @@ export interface TileData {
 /** FOE movement behavior on the field */
 export type FoePatternType = 'patrol' | 'chase' | 'stationary'
 
+/** FOE aggro state */
+export type FoeAggroState = 'patrol' | 'aggro'
+
 /** Definition of a FOE spawn in the floor data */
 export interface FoeSpawnData {
   readonly id: string // e.g. "foe-floor1-a"
@@ -33,6 +36,8 @@ export interface FoeSpawnData {
   readonly patrolPath?: Position[]
   /** Display name shown on collision */
   readonly name: string
+  /** Detection radius for aggro (Manhattan distance). Default: 3 tiles. */
+  readonly detectionRadius?: number
 }
 
 /** Weighted enemy entry for encounter tables */
@@ -90,6 +95,10 @@ export interface FoeState {
   /** +1 or -1, direction of traversal along patrol path */
   readonly patrolDirection: 1 | -1
   readonly name: string
+  /** Detection radius for aggro (Manhattan distance). Default: 3 tiles. */
+  readonly detectionRadius: number
+  /** Current aggro state. Patrol FOEs switch to chase when aggro'd. */
+  readonly aggroState: FoeAggroState
 }
 
 /** Runtime state of the encounter gauge */
@@ -123,6 +132,7 @@ export interface DungeonState {
 /** Events that can occur during a turn */
 export type DungeonEvent =
   | { readonly type: 'foe-collision'; readonly foeId: string }
+  | { readonly type: 'foe-aggro'; readonly foeId: string }
   | { readonly type: 'random-encounter' }
   | { readonly type: 'reached-entrance' }
   | { readonly type: 'reached-exit' }
