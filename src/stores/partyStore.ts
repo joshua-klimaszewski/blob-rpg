@@ -28,8 +28,8 @@ interface PartyStore {
   /** Get the active party members */
   getActiveParty: () => PartyMemberState[];
 
-  /** Award XP to all active party members and process level-ups */
-  awardXp: (amount: number) => void;
+  /** Award XP and process level-ups. By default awards to active members only (combat), set allMembers=true for quest rewards. */
+  awardXp: (amount: number, allMembers?: boolean) => void;
 
   /** Sync HP/TP from combat back to party roster */
   syncHpTpFromCombat: (combatParty: CombatEntity[]) => void;
@@ -61,10 +61,11 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
           .filter((m): m is PartyMemberState => m !== undefined);
       },
 
-      awardXp: (amount) => {
+      awardXp: (amount, allMembers = false) => {
         set((state) => {
           const newRoster = state.roster.map((member) => {
-            if (!state.activePartyIds.includes(member.id)) return member;
+            // Skip inactive members unless allMembers is true (for quest rewards)
+            if (!allMembers && !state.activePartyIds.includes(member.id)) return member;
 
             const updated = { ...member, xp: member.xp + amount };
             const classData = getClass(updated.classId);

@@ -60,7 +60,7 @@ describe('PartyStore', () => {
   });
 
   describe('awardXp', () => {
-    it('awards XP to active party members only', () => {
+    it('awards combat XP to active party members only (default)', () => {
       usePartyStore.getState().initializeRoster();
       usePartyStore.getState().awardXp(500);
 
@@ -71,6 +71,16 @@ describe('PartyStore', () => {
         } else {
           expect(member.xp).toBe(0);
         }
+      }
+    });
+
+    it('awards quest XP to all party members when allMembers=true', () => {
+      usePartyStore.getState().initializeRoster();
+      usePartyStore.getState().awardXp(500, true);
+
+      const { roster } = usePartyStore.getState();
+      for (const member of roster) {
+        expect(member.xp).toBe(500);
       }
     });
 
