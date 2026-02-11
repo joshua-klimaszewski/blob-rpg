@@ -88,12 +88,16 @@ export const FLOOR_1: FloorData = {
         { x: 4, y: 10 },
       ],
       name: 'Thornblob',
+      enemyId: 'thornblob-foe', // Unique FOE enemy (to be created)
+      canPursue: true,
     },
     {
       id: 'foe-f1-stationary',
       position: { x: 10, y: 7 },
       pattern: 'stationary',
       name: 'Guardblob',
+      enemyId: 'guardblob-foe', // Unique FOE enemy (to be created)
+      canPursue: false, // Stationary FOEs don't pursue
     },
   ],
   encounterRate: 8,

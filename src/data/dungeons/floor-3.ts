@@ -91,6 +91,8 @@ export const FLOOR_3: FloorData = {
       position: { x: 8, y: 9 },
       pattern: 'stationary',
       name: 'Elder Slime',
+      enemyId: 'elder-slime-foe', // Unique FOE enemy (to be created)
+      canPursue: false, // Boss-type stationary FOE
     },
   ],
   encounterRate: 5,

@@ -38,6 +38,10 @@ export interface FoeSpawnData {
   readonly name: string
   /** Detection radius for aggro (Manhattan distance). Default: 3 tiles. */
   readonly detectionRadius?: number
+  /** If true, FOE pursues player when detected. If false, stays on patrol (puzzle FOEs). Default: true. */
+  readonly canPursue?: boolean
+  /** Unique enemy ID for this FOE (e.g., "verdant-guardian"). Used for FOE encounters. */
+  readonly enemyId: string
 }
 
 /** Weighted enemy entry for encounter tables */
@@ -97,8 +101,12 @@ export interface FoeState {
   readonly name: string
   /** Detection radius for aggro (Manhattan distance). Default: 3 tiles. */
   readonly detectionRadius: number
-  /** Current aggro state. Patrol FOEs switch to chase when aggro'd. */
+  /** Current aggro state. Patrol FOEs switch to chase when aggro'd if canPursue is true. */
   readonly aggroState: FoeAggroState
+  /** If true, FOE pursues player when detected. If false, stays on patrol. */
+  readonly canPursue: boolean
+  /** Unique enemy ID for this FOE (e.g., "verdant-guardian"). */
+  readonly enemyId: string
 }
 
 /** Runtime state of the encounter gauge */

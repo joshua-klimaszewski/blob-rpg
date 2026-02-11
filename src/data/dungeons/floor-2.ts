@@ -86,6 +86,8 @@ export const FLOOR_2: FloorData = {
       position: { x: 7, y: 7 },
       pattern: 'chase',
       name: 'Venomblob',
+      enemyId: 'venomblob-foe', // Unique FOE enemy (to be created)
+      canPursue: true,
     },
   ],
   encounterRate: 6,

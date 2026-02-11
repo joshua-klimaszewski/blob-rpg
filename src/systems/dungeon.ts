@@ -287,9 +287,9 @@ export function moveFoes(
   floor: FloorData,
 ): DungeonState {
   const newFoes = state.foes.map((foe) => {
-    // Patrol FOEs switch to chase when aggro'd
+    // Patrol FOEs switch to chase when aggro'd (only if canPursue is true)
     const effectivePattern =
-      foe.pattern === 'patrol' && foe.aggroState === 'aggro'
+      foe.pattern === 'patrol' && foe.aggroState === 'aggro' && foe.canPursue
         ? 'chase'
         : foe.pattern
 
@@ -343,8 +343,8 @@ export function updateFoeAggro(
     const canDetect = canFoeDetectPlayer(foe, playerPos, floor)
     const dist = distance(foe.position, playerPos)
 
-    // Trigger aggro if detected and not already aggro'd
-    if (canDetect && foe.aggroState === 'patrol') {
+    // Trigger aggro if detected, not already aggro'd, and FOE can pursue
+    if (canDetect && foe.aggroState === 'patrol' && foe.canPursue) {
       newlyAggrod.push(foe.id)
       return { ...foe, aggroState: 'aggro' as const }
     }
@@ -543,6 +543,8 @@ export function initializeDungeonState(
       name: spawn.name,
       detectionRadius: spawn.detectionRadius ?? DEFAULT_DETECTION_RADIUS,
       aggroState: 'patrol' as const,
+      canPursue: spawn.canPursue ?? true, // Default: FOEs pursue when detected
+      enemyId: spawn.enemyId,
     })),
     encounterGauge: resetEncounterGauge(),
     facing: 'north',

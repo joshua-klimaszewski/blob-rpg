@@ -38,6 +38,8 @@ function makeFoe(overrides: Partial<FoeState> = {}): FoeState {
     name: 'Test FOE',
     detectionRadius: 3,
     aggroState: 'patrol',
+    canPursue: true,
+    enemyId: 'test-foe-enemy',
     ...overrides,
   }
 }
@@ -707,6 +709,7 @@ describe('initializeDungeonState', () => {
         pattern: 'patrol',
         patrolPath: [{ x: 2, y: 0 }, { x: 2, y: 1 }],
         name: 'Patrol FOE',
+        enemyId: 'test-foe-enemy',
       }],
     })
 
