@@ -76,12 +76,9 @@ export const FLOOR_1: FloorData = {
   foeSpawns: [
     {
       id: 'foe-f1-patrol',
-      position: { x: 4, y: 5 },
+      position: { x: 4, y: 7 },
       pattern: 'patrol',
       patrolPath: [
-        { x: 4, y: 4 },
-        { x: 4, y: 5 },
-        { x: 4, y: 6 },
         { x: 4, y: 7 },
         { x: 4, y: 8 },
         { x: 4, y: 9 },
@@ -89,7 +86,7 @@ export const FLOOR_1: FloorData = {
       ],
       name: 'Thornblob',
       enemyId: 'thornblob-foe',
-      canPursue: true,
+      canPursue: true, // Chases to teach FOE behavior, but patrol keeps it away from entrance
     },
     {
       id: 'foe-f1-stationary',

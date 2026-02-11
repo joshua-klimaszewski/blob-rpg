@@ -15,7 +15,8 @@ interface DungeonGridProps {
 export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
   const gridWidth = floor.width * cellSize
   const gridHeight = floor.height * cellSize
-  const partyRoster = usePartyStore((s) => s.roster)
+  const getActiveParty = usePartyStore((s) => s.getActiveParty)
+  const activeParty = getActiveParty()
 
   const visibleSet = useMemo(
     () => computeVisibleTiles(dungeon.playerPosition, floor),
@@ -52,7 +53,7 @@ export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
       {dungeon.foes
         .filter((foe) => visibleSet.has(positionKey(foe.position)))
         .map((foe) => {
-          const color = getFoeColor(foe.enemyId, partyRoster)
+          const color = getFoeColor(foe.enemyId, activeParty)
           return (
             <FoeToken
               key={foe.id}

@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import type {
   CombatState,
+  CombatEntity,
   EncounterData,
   CombatEventUnion,
   Action,
@@ -110,13 +111,28 @@ function processFoeReinforcements(combat: CombatState): {
   let updatedCombat = combat;
   const events: CombatEventUnion[] = [];
 
+  // Track which FOE IDs have already joined (check existing enemies)
+  const existingFoeIds = new Set(
+    updatedCombat.enemies
+      .filter((e: CombatEntity) => e.id.includes('-reinforce-'))
+      .map((e: CombatEntity) => e.id.split('-reinforce-')[0])
+  );
+
   for (const event of reinforcements) {
     if (event.type === 'foe-reinforcement') {
+      // Skip if this FOE has already joined combat
+      if (existingFoeIds.has(event.foeId)) {
+        continue;
+      }
+
       const enemyDef = getEnemy(event.enemyId);
       if (enemyDef) {
         // Generate unique instance ID for this reinforcement
         const instanceId = `${event.foeId}-reinforce-${Date.now()}`;
         updatedCombat = addFoeReinforcement(updatedCombat, enemyDef, instanceId);
+
+        // Mark this FOE as joined
+        existingFoeIds.add(event.foeId);
 
         // Create reinforcement event
         events.push({
