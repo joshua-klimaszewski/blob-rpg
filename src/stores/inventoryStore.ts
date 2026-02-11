@@ -53,7 +53,7 @@ interface InventoryStore {
 }
 
 const INITIAL_STATE = {
-  gold: 100,
+  gold: 0,
   materials: {} as Record<string, number>,
   soldMaterials: {} as Record<string, number>,
   consumables: {} as Record<string, number>,

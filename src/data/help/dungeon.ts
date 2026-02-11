@@ -7,7 +7,7 @@ export const DUNGEON_SECTIONS: HelpEntry[] = [
   },
   {
     heading: 'FOEs (Field On Enemy)',
-    body: 'FOEs are powerful enemies visible on the dungeon map. They are much tougher than random encounters and are meant to be avoided early on.\n\nFOEs move one step each time you move. Each FOE has a movement pattern — some patrol, some chase, and some stand still until provoked. Colliding with a FOE starts a difficult battle.',
+    body: 'FOEs are powerful enemies visible on the dungeon map. They are much tougher than random encounters and are meant to be avoided early on.\n\nFOEs move one step each time you move. Each FOE has a movement pattern — some patrol, some chase, and some stand still until provoked.\n\nDetection & Aggro: When you enter a FOE\'s detection radius (typically 3 tiles) and are in its line of sight, the FOE will notice you. An aggro\'d FOE turns red and plays an alert sound. Patrol FOEs switch to chase behavior when aggro\'d.\n\nTo escape an aggro\'d FOE, move far enough away (beyond detection radius + 2 tiles) or transition to a different area. Colliding with a FOE starts a difficult battle with elite enemies and no retreat.',
   },
   {
     heading: 'Fog of War',

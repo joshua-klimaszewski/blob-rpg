@@ -11,6 +11,8 @@ import type {
   TileVisibility,
   TurnResult,
 } from '../types/dungeon'
+import type { PartyMemberState } from '../types/combat'
+import { getEnemy } from '../data/enemies'
 
 // ---- Position utilities ----
 
@@ -287,7 +289,13 @@ export function moveFoes(
   floor: FloorData,
 ): DungeonState {
   const newFoes = state.foes.map((foe) => {
-    switch (foe.pattern) {
+    // Patrol FOEs switch to chase when aggro'd (only if canPursue is true)
+    const effectivePattern =
+      foe.pattern === 'patrol' && foe.aggroState === 'aggro' && foe.canPursue
+        ? 'chase'
+        : foe.pattern
+
+    switch (effectivePattern) {
       case 'patrol':
         return movePatrolFoe(foe)
       case 'chase':
@@ -297,6 +305,64 @@ export function moveFoes(
     }
   })
   return { ...state, foes: newFoes }
+}
+
+// ---- FOE aggro detection ----
+
+/** Default detection radius for FOEs (Manhattan distance) */
+export const DEFAULT_DETECTION_RADIUS = 3
+
+/**
+ * Check if a FOE can detect the player (within radius + line of sight).
+ * Uses computeVisibleTiles from FOE's perspective to check line of sight.
+ */
+export function canFoeDetectPlayer(
+  foe: FoeState,
+  playerPos: Position,
+  floor: FloorData,
+): boolean {
+  const dist = distance(foe.position, playerPos)
+  if (dist > foe.detectionRadius) return false
+
+  // Check line of sight from FOE's position
+  const visibleFromFoe = computeVisibleTiles(foe.position, floor, foe.detectionRadius)
+  return visibleFromFoe.has(positionKey(playerPos))
+}
+
+/**
+ * Update FOE aggro states based on player position.
+ * Returns new FOEs array and list of newly aggro'd FOE IDs.
+ */
+export function updateFoeAggro(
+  foes: FoeState[],
+  playerPos: Position,
+  floor: FloorData,
+): { foes: FoeState[]; newlyAggrod: string[] } {
+  const newlyAggrod: string[] = []
+  const DE_AGGRO_BONUS = 2 // Extra tiles needed to de-aggro
+
+  const updatedFoes = foes.map((foe) => {
+    const canDetect = canFoeDetectPlayer(foe, playerPos, floor)
+    const dist = distance(foe.position, playerPos)
+
+    // Trigger aggro if detected, not already aggro'd, and FOE can pursue
+    if (canDetect && foe.aggroState === 'patrol' && foe.canPursue) {
+      newlyAggrod.push(foe.id)
+      return { ...foe, aggroState: 'aggro' as const }
+    }
+
+    // De-aggro if player escapes beyond detection radius + bonus
+    if (
+      foe.aggroState === 'aggro' &&
+      dist > foe.detectionRadius + DE_AGGRO_BONUS
+    ) {
+      return { ...foe, aggroState: 'patrol' as const }
+    }
+
+    return foe
+  })
+
+  return { foes: updatedFoes, newlyAggrod }
 }
 
 // ---- FOE collision ----
@@ -311,11 +377,44 @@ export function checkFoeCollision(state: DungeonState): string | null {
   return null
 }
 
+/**
+ * Move FOEs one step and check for reinforcements.
+ * Used during combat to continue FOE movement on the field.
+ * Returns updated state and any FOEs that moved onto the player's position.
+ */
+export function moveFoesAndCheckReinforcements(
+  state: DungeonState,
+  floor: FloorData,
+): { state: DungeonState; reinforcements: DungeonEvent[] } {
+  const reinforcements: DungeonEvent[] = []
+
+  // Move FOEs one step
+  const afterMove = moveFoes(state, floor)
+
+  // Check which FOEs moved onto player's position
+  for (const foe of afterMove.foes) {
+    if (positionsEqual(foe.position, state.playerPosition)) {
+      // This FOE just moved onto the player - it's a reinforcement!
+      reinforcements.push({
+        type: 'foe-reinforcement',
+        foeId: foe.id,
+        foeName: foe.name,
+        enemyId: foe.enemyId,
+      })
+    }
+  }
+
+  return { state: afterMove, reinforcements }
+}
+
 // ---- Encounter gauge ----
 
 /**
  * Tick the encounter gauge by one step.
  * Returns new gauge state and whether an encounter triggered.
+ *
+ * Red zone (at threshold): 25% chance per step to trigger encounter.
+ * This creates tension - you can get lucky and reach the exit in the red!
  */
 export function tickEncounterGauge(
   gauge: EncounterGaugeState,
@@ -328,9 +427,16 @@ export function tickEncounterGauge(
   const newValue = Math.min(gauge.value + fill, gauge.threshold)
 
   if (newValue >= gauge.threshold) {
+    // Red zone: 25% chance to trigger encounter per step
+    const triggerRoll = rng()
+    const triggered = triggerRoll < 0.25
+
     return {
-      gauge: { value: 0, threshold: gauge.threshold },
-      triggered: true,
+      gauge: {
+        value: triggered ? 0 : newValue, // Reset if triggered, else stay at threshold
+        threshold: gauge.threshold,
+      },
+      triggered,
     }
   }
 
@@ -385,28 +491,42 @@ export function processTurn(
   // 3. Move FOEs
   const afterFoes = moveFoes(afterMove, floor)
 
-  // 4. Check FOE collision
-  const collidedFoeId = checkFoeCollision(afterFoes)
+  // 4. Update FOE aggro states
+  const { foes: foesWithAggro, newlyAggrod } = updateFoeAggro(
+    afterFoes.foes,
+    afterMove.playerPosition,
+    floor,
+  )
+  const afterAggro: DungeonState = { ...afterFoes, foes: foesWithAggro }
+
+  // Add aggro events for newly aggro'd FOEs
+  for (const foeId of newlyAggrod) {
+    events.push({ type: 'foe-aggro', foeId })
+  }
+
+  // 5. Check FOE collision
+  const collidedFoeId = checkFoeCollision(afterAggro)
   if (collidedFoeId) {
     events.push({ type: 'foe-collision', foeId: collidedFoeId })
   }
 
-  // 5. Tick encounter gauge
+  // 6. Tick encounter gauge
   const { gauge: newGauge, triggered } = tickEncounterGauge(
-    afterFoes.encounterGauge,
+    afterAggro.encounterGauge,
     floor,
     rng,
   )
+
   const afterGauge: DungeonState = {
-    ...afterFoes,
-    encounterGauge: newGauge,
+    ...afterAggro,
+    encounterGauge: newGauge, // tickEncounterGauge handles reset
   }
 
   if (triggered) {
     events.push({ type: 'random-encounter' })
   }
 
-  // 6. Update fog of war
+  // 7. Update fog of war
   const newVisible = computeVisibleTiles(afterGauge.playerPosition, floor)
   const newExplored = updateExploredTiles(afterGauge.exploredTiles, newVisible)
   const finalState: DungeonState = newExplored === afterGauge.exploredTiles
@@ -464,10 +584,85 @@ export function initializeDungeonState(
       patrolIndex: 0,
       patrolDirection: 1 as const,
       name: spawn.name,
+      detectionRadius: spawn.detectionRadius ?? DEFAULT_DETECTION_RADIUS,
+      aggroState: 'patrol' as const,
+      canPursue: spawn.canPursue ?? true, // Default: FOEs pursue when detected
+      enemyId: spawn.enemyId,
     })),
     encounterGauge: resetEncounterGauge(),
     facing: 'north',
     processing: false,
     exploredTiles: [...initialVisible],
   }
+}
+
+// ---- FOE Difficulty Color System ----
+
+/**
+ * Calculate total party power for FOE color determination.
+ *
+ * Power formula: sum of (level * (totalStats + HP/10)) for alive members
+ */
+export function calculatePlayerPower(party: PartyMemberState[]): number {
+  return party.reduce((total, member) => {
+    if (member.hp <= 0) return total // Skip dead members
+
+    // Sum all core stats
+    const stats = member.stats
+    const statTotal = stats.str + stats.vit + stats.int + stats.wis + stats.agi + stats.luc
+
+    // HP contributes (scaled down by 10)
+    const hpBonus = member.maxHp / 10
+
+    // Level acts as multiplier
+    const power = member.level * (statTotal + hpBonus)
+
+    return total + power
+  }, 0)
+}
+
+/**
+ * Calculate FOE power based on enemy definition.
+ *
+ * Power formula: totalStats + HP/10
+ */
+export function calculateFoePower(enemyId: string): number {
+  const enemy = getEnemy(enemyId)
+  if (!enemy) return 0
+
+  const stats = enemy.stats
+  const statTotal = stats.str + stats.vit + stats.int + stats.wis + stats.agi + stats.luc
+  const hpBonus = enemy.maxHp / 10
+
+  return statTotal + hpBonus
+}
+
+/**
+ * Determine FOE color based on party power vs FOE power ratio.
+ *
+ * - RED: FOE is 50%+ of party power (dangerous!)
+ * - YELLOW: FOE is 30-50% of party power (fair fight)
+ * - GREEN: FOE is <30% of party power (player advantage)
+ *
+ * Thresholds are tuned for early-game balance - a 120 HP FOE should feel
+ * dangerous to a level 1 party, not trivial.
+ *
+ * @returns Color tier for UI display
+ */
+export function getFoeColor(
+  foeEnemyId: string,
+  party: PartyMemberState[]
+): 'red' | 'yellow' | 'green' {
+  const playerPower = calculatePlayerPower(party)
+  const foePower = calculateFoePower(foeEnemyId)
+
+  // Handle edge cases
+  if (playerPower === 0) return 'red' // No alive party = always dangerous
+  if (foePower === 0) return 'green' // Invalid FOE = always safe
+
+  const ratio = foePower / playerPower
+
+  if (ratio >= 0.5) return 'red'    // FOE is 50%+ of party power
+  if (ratio >= 0.3) return 'yellow' // FOE is 30-50% of party power
+  return 'green'                     // FOE is <30% of party power
 }

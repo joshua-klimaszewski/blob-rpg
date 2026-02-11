@@ -359,7 +359,7 @@ export function migrateLegacySaves(): GuildEntry | null {
       activePartyIds: party.activePartyIds ?? [],
     },
     inventory: {
-      gold: inventory?.gold ?? 100,
+      gold: inventory?.gold ?? 0,
       materials: inventory?.materials ?? {},
       soldMaterials: inventory?.soldMaterials ?? {},
       consumables: inventory?.consumables ?? {},

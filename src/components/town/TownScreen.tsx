@@ -39,6 +39,9 @@ export function TownScreen() {
   })
   const newQuestsCount = availableQuests.filter((quest) => !isQuestActive(quest.id)).length
 
+  // Calculate unspent skill points across party
+  const unspentSP = roster.reduce((total, member) => total + member.skillPoints, 0)
+
   return (
     <div className="flex flex-col items-center gap-4 p-6">
       <div className="flex justify-between items-center w-full max-w-half">
@@ -119,8 +122,9 @@ export function TownScreen() {
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
           Quests
-          {claimableQuests > 0 && ` (${claimableQuests})`}
-          {newQuestsCount > 0 && <span className="ml-1">●</span>}
+          {claimableQuests > 0 && newQuestsCount > 0 && ` (${claimableQuests} ready, ${newQuestsCount} new)`}
+          {claimableQuests > 0 && newQuestsCount === 0 && ` (${claimableQuests} ready)`}
+          {claimableQuests === 0 && newQuestsCount > 0 && ` (${newQuestsCount} new)`}
         </button>
 
         <button
@@ -135,6 +139,7 @@ export function TownScreen() {
           className="min-h-touch border-2 border-ink px-4 py-3 font-bold active:bg-ink active:text-paper"
         >
           Characters
+          {unspentSP > 0 && ` (${unspentSP} SP)`}
         </button>
 
         <button

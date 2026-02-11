@@ -27,6 +27,23 @@ import {
 
 // ---- Test helpers ----
 
+/** Helper to create test FOE with default required fields */
+function makeFoe(overrides: Partial<FoeState> = {}): FoeState {
+  return {
+    id: 'foe-1',
+    position: { x: 0, y: 0 },
+    pattern: 'patrol',
+    patrolIndex: 0,
+    patrolDirection: 1,
+    name: 'Test FOE',
+    detectionRadius: 3,
+    aggroState: 'patrol',
+    canPursue: true,
+    enemyId: 'test-foe-enemy',
+    ...overrides,
+  }
+}
+
 /** Minimal 3x3 floor for testing */
 function makeFloor(overrides?: Partial<FloorData>): FloorData {
   // . . .
@@ -399,30 +416,23 @@ describe('movePatrolFoe', () => {
   ]
 
   it('advances along patrol path', () => {
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: path[0],
       pattern: 'patrol',
       patrolPath: path,
-      patrolIndex: 0,
-      patrolDirection: 1,
-      name: 'Test FOE',
-    }
+    })
     const result = movePatrolFoe(foe)
     expect(result.position).toEqual({ x: 1, y: 1 })
     expect(result.patrolIndex).toBe(1)
   })
 
   it('reverses at the end of the path', () => {
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: path[2],
       pattern: 'patrol',
       patrolPath: path,
       patrolIndex: 2,
-      patrolDirection: 1,
-      name: 'Test FOE',
-    }
+    })
     const result = movePatrolFoe(foe)
     expect(result.position).toEqual({ x: 1, y: 1 })
     expect(result.patrolIndex).toBe(1)
@@ -430,15 +440,12 @@ describe('movePatrolFoe', () => {
   })
 
   it('reverses at the start of the path', () => {
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: path[0],
       pattern: 'patrol',
       patrolPath: path,
-      patrolIndex: 0,
       patrolDirection: -1,
-      name: 'Test FOE',
-    }
+    })
     const result = movePatrolFoe(foe)
     expect(result.position).toEqual({ x: 1, y: 1 })
     expect(result.patrolIndex).toBe(1)
@@ -446,14 +453,7 @@ describe('movePatrolFoe', () => {
   })
 
   it('returns unchanged foe if no patrol path', () => {
-    const foe: FoeState = {
-      id: 'foe-1',
-      position: { x: 0, y: 0 },
-      pattern: 'patrol',
-      patrolIndex: 0,
-      patrolDirection: 1,
-      name: 'Test FOE',
-    }
+    const foe = makeFoe()
     expect(movePatrolFoe(foe)).toEqual(foe)
   })
 })
@@ -461,14 +461,11 @@ describe('movePatrolFoe', () => {
 describe('moveChaseFoe', () => {
   it('moves toward the player on the primary axis', () => {
     const floor = makeFloor()
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: { x: 0, y: 0 },
       pattern: 'chase',
-      patrolIndex: 0,
-      patrolDirection: 1,
       name: 'Chaser',
-    }
+    })
     const result = moveChaseFoe(foe, { x: 2, y: 2 }, floor)
     // Larger or equal dx, so moves east
     expect(result.position).toEqual({ x: 1, y: 0 })
@@ -476,14 +473,11 @@ describe('moveChaseFoe', () => {
 
   it('does not move if already on the player', () => {
     const floor = makeFloor()
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: { x: 1, y: 1 },
       pattern: 'chase',
-      patrolIndex: 0,
-      patrolDirection: 1,
       name: 'Chaser',
-    }
+    })
     const result = moveChaseFoe(foe, { x: 1, y: 1 }, floor)
     expect(result.position).toEqual({ x: 1, y: 1 })
   })
@@ -498,14 +492,11 @@ describe('moveChaseFoe', () => {
         [{ type: 'floor' }, { type: 'floor' }, { type: 'floor' }],
       ],
     })
-    const foe: FoeState = {
-      id: 'foe-1',
+    const foe = makeFoe({
       position: { x: 1, y: 2 },
       pattern: 'chase',
-      patrolIndex: 0,
-      patrolDirection: 1,
       name: 'Chaser',
-    }
+    })
     const result = moveChaseFoe(foe, { x: 2, y: 0 }, floor)
     // Can't go north (wall), tries east
     expect(result.position).toEqual({ x: 2, y: 2 })
@@ -518,23 +509,18 @@ describe('moveFoes', () => {
     const state = makeState({
       playerPosition: { x: 0, y: 0 },
       foes: [
-        {
+        makeFoe({
           id: 'patrol',
           position: { x: 1, y: 0 },
-          pattern: 'patrol',
           patrolPath: [{ x: 1, y: 0 }, { x: 1, y: 1 }],
-          patrolIndex: 0,
-          patrolDirection: 1,
           name: 'Patrol',
-        },
-        {
+        }),
+        makeFoe({
           id: 'stationary',
           position: { x: 2, y: 0 },
           pattern: 'stationary',
-          patrolIndex: 0,
-          patrolDirection: 1,
           name: 'Guard',
-        },
+        }),
       ],
     })
     const result = moveFoes(state, floor)
@@ -549,14 +535,11 @@ describe('checkFoeCollision', () => {
   it('returns foe id when on same tile as player', () => {
     const state = makeState({
       playerPosition: { x: 1, y: 1 },
-      foes: [{
-        id: 'foe-1',
+      foes: [makeFoe({
         position: { x: 1, y: 1 },
         pattern: 'stationary',
-        patrolIndex: 0,
-        patrolDirection: 1,
         name: 'Guard',
-      }],
+      })],
     })
     expect(checkFoeCollision(state)).toBe('foe-1')
   })
@@ -564,14 +547,11 @@ describe('checkFoeCollision', () => {
   it('returns null when no collision', () => {
     const state = makeState({
       playerPosition: { x: 0, y: 0 },
-      foes: [{
-        id: 'foe-1',
+      foes: [makeFoe({
         position: { x: 2, y: 2 },
         pattern: 'stationary',
-        patrolIndex: 0,
-        patrolDirection: 1,
         name: 'Guard',
-      }],
+      })],
     })
     expect(checkFoeCollision(state)).toBeNull()
   })
@@ -589,11 +569,17 @@ describe('tickEncounterGauge', () => {
     expect(result.triggered).toBe(false)
   })
 
-  it('triggers at threshold and resets to 0', () => {
+  it('has 25% chance to trigger at threshold', () => {
     const gauge = { value: 91, threshold: 100 }
-    const result = tickEncounterGauge(gauge, floor)
-    expect(result.triggered).toBe(true)
-    expect(result.gauge.value).toBe(0)
+    // Test with low RNG value (< 0.25) - should trigger
+    const resultTrigger = tickEncounterGauge(gauge, floor, () => 0.1)
+    expect(resultTrigger.triggered).toBe(true)
+    expect(resultTrigger.gauge.value).toBe(0) // resets when triggered
+
+    // Test with high RNG value (>= 0.25) - should NOT trigger
+    const resultNoTrigger = tickEncounterGauge(gauge, floor, () => 0.5)
+    expect(resultNoTrigger.triggered).toBe(false)
+    expect(resultNoTrigger.gauge.value).toBe(100) // stays at threshold (red zone)
   })
 
   it('uses variance from rng', () => {
@@ -607,11 +593,12 @@ describe('tickEncounterGauge', () => {
     expect(result.gauge.value).toBe(20)
   })
 
-  it('caps value at threshold', () => {
+  it('stays at threshold when in red zone and no trigger', () => {
     const gauge = { value: 95, threshold: 100 }
-    const result = tickEncounterGauge(gauge, floor)
-    expect(result.gauge.value).toBe(0) // triggered and reset
-    expect(result.triggered).toBe(true)
+    // High RNG (>= 0.25) = no trigger, stays in red
+    const result = tickEncounterGauge(gauge, floor, () => 0.9)
+    expect(result.gauge.value).toBe(100) // stays at threshold
+    expect(result.triggered).toBe(false)
   })
 })
 
@@ -676,14 +663,11 @@ describe('processTurn', () => {
     const floor = makeFloor()
     const state = makeState({
       playerPosition: { x: 0, y: 0 },
-      foes: [{
-        id: 'foe-1',
+      foes: [makeFoe({
         position: { x: 1, y: 0 },
         pattern: 'stationary',
-        patrolIndex: 0,
-        patrolDirection: 1,
         name: 'Guard',
-      }],
+      })],
     })
     const result = processTurn(state, floor, 'east', () => 0)
     expect(result.events).toContainEqual({ type: 'foe-collision', foeId: 'foe-1' })
@@ -706,15 +690,12 @@ describe('processTurn', () => {
     const floor = makeFloor()
     const state = makeState({
       playerPosition: { x: 0, y: 0 },
-      foes: [{
+      foes: [makeFoe({
         id: 'patrol',
         position: { x: 2, y: 0 },
-        pattern: 'patrol',
         patrolPath: [{ x: 2, y: 0 }, { x: 2, y: 1 }],
-        patrolIndex: 0,
-        patrolDirection: 1,
         name: 'Patrol',
-      }],
+      })],
     })
     const result = processTurn(state, floor, 'south', () => 0)
     expect(result.state.foes[0].position).toEqual({ x: 2, y: 1 })
@@ -735,6 +716,7 @@ describe('initializeDungeonState', () => {
         pattern: 'patrol',
         patrolPath: [{ x: 2, y: 0 }, { x: 2, y: 1 }],
         name: 'Patrol FOE',
+        enemyId: 'test-foe-enemy',
       }],
     })
 

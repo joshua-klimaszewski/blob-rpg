@@ -164,9 +164,10 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 
 **6b — Combat & AI Depth (remaining):**
 - [ ] Enemy skill usage in AI — enemies currently only basic-attack; give enemies access to their defined skills (binds, displacement, ailments) with weighted selection based on AI pattern
-- [ ] FOE-specific combat encounters (FOEs should be significantly harder, use unique skills, have boss-like behavior)
+- [x] FOE-specific combat encounters (FOEs should be significantly harder, use unique skills, have boss-like behavior) (2026-02-10) — Created elite enemy variants (2x HP, +30% stats) for all FOE encounter tables
 - [ ] Boss encounter on Floor 3 (gate the dungeon exit behind a mandatory boss fight)
-- [ ] FOE respawn on floor re-entry (CLAUDE.md specifies this, not implemented)
+- [x] FOE respawn on floor re-entry (CLAUDE.md specifies this, not implemented) (2026-02-10) — Current behavior is correct: FOEs respawn on floor re-entry from FloorData
+- [x] FOE aggro/detection system (2026-02-10) — Implemented detection radius (3 tiles), line-of-sight check, visual (red pulsing) and audio feedback, patrol→chase transition on aggro
 - [ ] Combo counter feedback — reward multi-character combos more visibly (sound cue placeholder, screen shake, escalating text size)
 
 **6c — Onboarding & Tutorial (remaining):**
@@ -196,8 +197,8 @@ Blob RPG is a mobile-first, browser-based RPG inspired by Etrian Odyssey, Pokém
 - [ ] 4-6 new enemy types with F4-F6 encounter tables
 - [ ] Tier 3 equipment unlocked via new materials
 - [ ] New quest set for second dungeon
-- [ ] FOE with chase AI pattern (pursues player in line of sight)
-- [ ] Conditional FOE mechanics (e.g. FOE that only moves when player faces away)
+- [x] FOE with chase AI pattern (pursues player in line of sight) (2026-02-10) — Chase pattern exists; now patrol FOEs switch to chase when aggro'd
+- [ ] Conditional FOE mechanics (e.g. FOE that only moves when player faces away) — Deferred to Phase 7
 - [ ] Second dungeon boss encounter
 - [ ] Town upgrades (expanded inn services, new shop tiers)
 

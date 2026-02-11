@@ -387,6 +387,12 @@ export interface FleeFailedEvent extends CombatEvent {
   type: 'flee-failed';
 }
 
+export interface ReinforcementEvent extends CombatEvent {
+  type: 'reinforcement';
+  enemyName: string;
+  message: string;
+}
+
 /** Union of all combat events */
 export type CombatEventUnion =
   | DamageEvent
@@ -402,7 +408,8 @@ export type CombatEventUnion =
   | VictoryEvent
   | DefeatEvent
   | FleeSuccessEvent
-  | FleeFailedEvent;
+  | FleeFailedEvent
+  | ReinforcementEvent;
 
 // ============================================================================
 // Combat Initialization & Rewards

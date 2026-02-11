@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import type {
   CombatState,
+  CombatEntity,
   EncounterData,
   CombatEventUnion,
   Action,
@@ -20,6 +21,7 @@ import {
   advanceToNextAlive,
   calculateRewards,
   defaultRNG,
+  addFoeReinforcement,
 } from '../systems/combat';
 import { useGameStore } from './gameStore';
 import { usePartyStore } from './partyStore';
@@ -30,6 +32,8 @@ import { getSkill } from '../data/classes/index';
 import { getEnemySkill } from '../data/enemies/skills';
 import type { SkillDefinition } from '../types/character';
 import { getPassiveModifiers } from '../systems/character';
+import { moveFoesAndCheckReinforcements } from '../systems/dungeon';
+import { useDungeonStore } from './dungeonStore';
 
 /** Combined skill lookup: checks player skills first, then enemy skills */
 function lookupSkill(id: string): SkillDefinition | undefined {
@@ -75,6 +79,73 @@ interface CombatStore {
 
   /** Clear last events (after UI has processed them) */
   clearEvents: () => void;
+}
+
+/**
+ * Process FOE movement and reinforcements during combat.
+ * Called after each combat turn to move FOEs on the dungeon map.
+ * If any FOE moves onto the player's position, they join the combat!
+ */
+function processFoeReinforcements(combat: CombatState): {
+  combat: CombatState;
+  reinforcementEvents: CombatEventUnion[];
+} {
+  const dungeonStore = useDungeonStore;
+  const { dungeon, floor } = dungeonStore.getState();
+
+  // Skip if no dungeon (shouldn't happen, but defensive)
+  if (!dungeon || !floor) {
+    return { combat, reinforcementEvents: [] };
+  }
+
+  // Move FOEs one step and check for reinforcements
+  const { state: newDungeonState, reinforcements} = moveFoesAndCheckReinforcements(
+    dungeon,
+    floor
+  );
+
+  // Update dungeon state with new FOE positions using Zustand's set
+  dungeonStore.setState({ dungeon: newDungeonState });
+
+  // Add each reinforcement to combat and create events
+  let updatedCombat = combat;
+  const events: CombatEventUnion[] = [];
+
+  // Track which FOE IDs have already joined (check existing enemies)
+  const existingFoeIds = new Set(
+    updatedCombat.enemies
+      .filter((e: CombatEntity) => e.id.includes('-reinforce-'))
+      .map((e: CombatEntity) => e.id.split('-reinforce-')[0])
+  );
+
+  for (const event of reinforcements) {
+    if (event.type === 'foe-reinforcement') {
+      // Skip if this FOE has already joined combat
+      if (existingFoeIds.has(event.foeId)) {
+        continue;
+      }
+
+      const enemyDef = getEnemy(event.enemyId);
+      if (enemyDef) {
+        // Generate unique instance ID for this reinforcement
+        const instanceId = `${event.foeId}-reinforce-${Date.now()}`;
+        updatedCombat = addFoeReinforcement(updatedCombat, enemyDef, instanceId);
+
+        // Mark this FOE as joined
+        existingFoeIds.add(event.foeId);
+
+        // Create reinforcement event
+        events.push({
+          type: 'reinforcement',
+          timestamp: Date.now(),
+          enemyName: event.foeName,
+          message: `${event.foeName} has joined the battle!`,
+        });
+      }
+    }
+  }
+
+  return { combat: updatedCombat, reinforcementEvents: events };
 }
 
 function handlePhaseTransition(get: () => CombatStore, state: CombatState) {
@@ -185,7 +256,14 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     // Atomically execute action AND advance to next alive actor in one set()
     const advanced = advanceToNextAlive(result.state);
-    set({ combat: advanced, lastEvents: result.events });
+
+    // Process FOE reinforcements (FOEs move during combat!)
+    const { combat: withReinforcements, reinforcementEvents } = processFoeReinforcements(advanced);
+
+    // Combine action events with reinforcement events
+    const allEvents = [...result.events, ...reinforcementEvents];
+
+    set({ combat: withReinforcements, lastEvents: allEvents });
   },
 
   processEnemyTurnAndAdvance: () => {
@@ -209,9 +287,16 @@ export const useCombatStore = create<CombatStore>((set, get) => ({
 
     // Atomically apply enemy action AND advance to next alive actor in one set() call
     const advanced = advanceToNextAlive(result.state);
+
+    // Process FOE reinforcements (FOEs move during combat!)
+    const { combat: withReinforcements, reinforcementEvents } = processFoeReinforcements(advanced);
+
+    // Combine enemy turn events with reinforcement events
+    const allEvents = [...result.events, ...reinforcementEvents];
+
     set({
-      combat: advanced,
-      lastEvents: result.events,
+      combat: withReinforcements,
+      lastEvents: allEvents,
     });
   },
 
