@@ -375,11 +375,44 @@ export function checkFoeCollision(state: DungeonState): string | null {
   return null
 }
 
+/**
+ * Move FOEs one step and check for reinforcements.
+ * Used during combat to continue FOE movement on the field.
+ * Returns updated state and any FOEs that moved onto the player's position.
+ */
+export function moveFoesAndCheckReinforcements(
+  state: DungeonState,
+  floor: FloorData,
+): { state: DungeonState; reinforcements: DungeonEvent[] } {
+  const reinforcements: DungeonEvent[] = []
+
+  // Move FOEs one step
+  const afterMove = moveFoes(state, floor)
+
+  // Check which FOEs moved onto player's position
+  for (const foe of afterMove.foes) {
+    if (positionsEqual(foe.position, state.playerPosition)) {
+      // This FOE just moved onto the player - it's a reinforcement!
+      reinforcements.push({
+        type: 'foe-reinforcement',
+        foeId: foe.id,
+        foeName: foe.name,
+        enemyId: foe.enemyId,
+      })
+    }
+  }
+
+  return { state: afterMove, reinforcements }
+}
+
 // ---- Encounter gauge ----
 
 /**
  * Tick the encounter gauge by one step.
  * Returns new gauge state and whether an encounter triggered.
+ *
+ * Red zone (at threshold): 25% chance per step to trigger encounter.
+ * This creates tension - you can get lucky and reach the exit in the red!
  */
 export function tickEncounterGauge(
   gauge: EncounterGaugeState,
@@ -392,9 +425,16 @@ export function tickEncounterGauge(
   const newValue = Math.min(gauge.value + fill, gauge.threshold)
 
   if (newValue >= gauge.threshold) {
+    // Red zone: 25% chance to trigger encounter per step
+    const triggerRoll = rng()
+    const triggered = triggerRoll < 0.25
+
     return {
-      gauge: { value: 0, threshold: gauge.threshold },
-      triggered: true,
+      gauge: {
+        value: triggered ? 0 : newValue, // Reset if triggered, else stay at threshold
+        threshold: gauge.threshold,
+      },
+      triggered,
     }
   }
 
@@ -474,9 +514,10 @@ export function processTurn(
     floor,
     rng,
   )
+
   const afterGauge: DungeonState = {
     ...afterAggro,
-    encounterGauge: newGauge,
+    encounterGauge: newGauge, // tickEncounterGauge handles reset
   }
 
   if (triggered) {

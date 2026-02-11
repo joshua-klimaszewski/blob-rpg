@@ -141,6 +141,7 @@ export interface DungeonState {
 export type DungeonEvent =
   | { readonly type: 'foe-collision'; readonly foeId: string }
   | { readonly type: 'foe-aggro'; readonly foeId: string }
+  | { readonly type: 'foe-reinforcement'; readonly foeId: string; readonly foeName: string; readonly enemyId: string }
   | { readonly type: 'random-encounter' }
   | { readonly type: 'reached-entrance' }
   | { readonly type: 'reached-exit' }

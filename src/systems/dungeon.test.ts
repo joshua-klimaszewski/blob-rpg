@@ -569,11 +569,17 @@ describe('tickEncounterGauge', () => {
     expect(result.triggered).toBe(false)
   })
 
-  it('triggers at threshold and resets to 0', () => {
+  it('has 25% chance to trigger at threshold', () => {
     const gauge = { value: 91, threshold: 100 }
-    const result = tickEncounterGauge(gauge, floor)
-    expect(result.triggered).toBe(true)
-    expect(result.gauge.value).toBe(0)
+    // Test with low RNG value (< 0.25) - should trigger
+    const resultTrigger = tickEncounterGauge(gauge, floor, () => 0.1)
+    expect(resultTrigger.triggered).toBe(true)
+    expect(resultTrigger.gauge.value).toBe(0) // resets when triggered
+
+    // Test with high RNG value (>= 0.25) - should NOT trigger
+    const resultNoTrigger = tickEncounterGauge(gauge, floor, () => 0.5)
+    expect(resultNoTrigger.triggered).toBe(false)
+    expect(resultNoTrigger.gauge.value).toBe(100) // stays at threshold (red zone)
   })
 
   it('uses variance from rng', () => {
@@ -587,11 +593,12 @@ describe('tickEncounterGauge', () => {
     expect(result.gauge.value).toBe(20)
   })
 
-  it('caps value at threshold', () => {
+  it('stays at threshold when in red zone and no trigger', () => {
     const gauge = { value: 95, threshold: 100 }
-    const result = tickEncounterGauge(gauge, floor)
-    expect(result.gauge.value).toBe(0) // triggered and reset
-    expect(result.triggered).toBe(true)
+    // High RNG (>= 0.25) = no trigger, stays in red
+    const result = tickEncounterGauge(gauge, floor, () => 0.9)
+    expect(result.gauge.value).toBe(100) // stays at threshold
+    expect(result.triggered).toBe(false)
   })
 })
 
