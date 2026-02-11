@@ -86,7 +86,8 @@ export const FLOOR_1: FloorData = {
       ],
       name: 'Thornblob',
       enemyId: 'thornblob-foe',
-      canPursue: true, // Chases to teach FOE behavior, but patrol keeps it away from entrance
+      canPursue: true, // Chases to teach FOE behavior
+      detectionRadius: 2, // Reduced from default 3 - can't see entrance from patrol
     },
     {
       id: 'foe-f1-stationary',
