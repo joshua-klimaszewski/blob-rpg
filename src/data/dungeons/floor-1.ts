@@ -76,24 +76,44 @@ export const FLOOR_1: FloorData = {
   foeSpawns: [
     {
       id: 'foe-f1-patrol',
-      position: { x: 4, y: 5 },
+      position: { x: 4, y: 7 },
       pattern: 'patrol',
       patrolPath: [
-        { x: 4, y: 4 },
-        { x: 4, y: 5 },
-        { x: 4, y: 6 },
         { x: 4, y: 7 },
         { x: 4, y: 8 },
         { x: 4, y: 9 },
         { x: 4, y: 10 },
       ],
       name: 'Thornblob',
+      enemyId: 'thornblob-foe',
+      canPursue: true, // Chases to teach FOE behavior
+      detectionRadius: 2, // Reduced from default 3 - can't see entrance from patrol
     },
     {
       id: 'foe-f1-stationary',
       position: { x: 10, y: 7 },
       pattern: 'stationary',
       name: 'Guardblob',
+      enemyId: 'guardblob-foe',
+      canPursue: false, // Stationary FOEs don't pursue
+    },
+    {
+      id: 'foe-f1-exit-puzzle',
+      position: { x: 11, y: 11 },
+      pattern: 'patrol',
+      patrolPath: [
+        { x: 11, y: 11 }, // Top-left of loop
+        { x: 12, y: 11 }, // Top-center
+        { x: 13, y: 11 }, // Top-right
+        { x: 13, y: 12 }, // Right-center (blocks exit approach!)
+        { x: 13, y: 13 }, // Bottom-right
+        { x: 12, y: 13 }, // Bottom-center
+        { x: 11, y: 13 }, // Bottom-left
+        { x: 11, y: 12 }, // Left-center
+      ],
+      name: 'Verdant Guardian',
+      enemyId: 'verdant-guardian-foe',
+      canPursue: false, // Puzzle FOE - stays on patrol loop forever!
     },
   ],
   encounterRate: 8,
@@ -104,8 +124,8 @@ export const FLOOR_1: FloorData = {
       { enemyId: 'mossy-slime', weight: 1 },
     ],
     foe: [
-      { enemyId: 'slime', weight: 2 },
-      { enemyId: 'mossy-slime', weight: 2 },
+      { enemyId: 'elite-slime', weight: 3 },
+      { enemyId: 'elite-mossy-slime', weight: 2 },
     ],
     randomSize: [1, 2],
     foeSize: [2, 3],

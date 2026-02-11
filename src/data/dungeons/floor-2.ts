@@ -86,6 +86,8 @@ export const FLOOR_2: FloorData = {
       position: { x: 7, y: 7 },
       pattern: 'chase',
       name: 'Venomblob',
+      enemyId: 'venomblob-foe', // Unique FOE enemy (to be created)
+      canPursue: true,
     },
   ],
   encounterRate: 6,
@@ -97,8 +99,9 @@ export const FLOOR_2: FloorData = {
       { enemyId: 'mossy-slime', weight: 1 },
     ],
     foe: [
-      { enemyId: 'fungoid', weight: 2 },
-      { enemyId: 'sporebat', weight: 2 },
+      { enemyId: 'elite-fungoid', weight: 3 },
+      { enemyId: 'elite-mossy-slime', weight: 1 },
+      { enemyId: 'sporebat', weight: 1 },
     ],
     randomSize: [2, 3],
     foeSize: [2, 3],

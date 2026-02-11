@@ -21,7 +21,7 @@ export function GuildNameScreen() {
     useGuildStore.getState().setActiveGuild(guild.id, guild.name);
     usePartyStore.getState().initializeRoster();
     useInventoryStore.setState({
-      gold: 100,
+      gold: 0,
       materials: {},
       soldMaterials: {},
       consumables: {},

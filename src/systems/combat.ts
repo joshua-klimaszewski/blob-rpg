@@ -1122,6 +1122,88 @@ export function initializeCombat(encounter: EncounterData): CombatState {
 }
 
 /**
+ * Add a FOE reinforcement to active combat.
+ * Called when a FOE moves onto the player's position during combat.
+ * Returns new combat state with the FOE enemy added.
+ */
+export function addFoeReinforcement(
+  state: CombatState,
+  enemyDefinition: EnemyDefinition,
+  instanceId: string,
+): CombatState {
+  // Find an empty grid position for the reinforcement
+  let placementPos: GridPosition = [1, 1]; // Default center
+  outerLoop: for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      if (state.grid[row][col].entities.length === 0) {
+        placementPos = [row, col];
+        break outerLoop;
+      }
+    }
+  }
+
+  // Create the enemy entity
+  const enemy: CombatEntity = {
+    id: instanceId,
+    name: enemyDefinition.name,
+    definitionId: enemyDefinition.id,
+    hp: enemyDefinition.maxHp,
+    maxHp: enemyDefinition.maxHp,
+    tp: enemyDefinition.maxTp,
+    maxTp: enemyDefinition.maxTp,
+    stats: { ...enemyDefinition.stats },
+    position: placementPos,
+    binds: { head: 0, arm: 0, leg: 0 },
+    ailments: {
+      poison: null,
+      paralyze: null,
+      sleep: null,
+      blind: null,
+    },
+    resistances: {
+      head: 0,
+      arm: 0,
+      leg: 0,
+      poison: 0,
+      paralyze: 0,
+      sleep: 0,
+      blind: 0,
+    },
+    isParty: false,
+    skills: enemyDefinition.skills,
+    buffs: [],
+    passiveModifiers: [],
+  };
+
+  // Add to enemies array
+  const newEnemies = [...state.enemies, enemy];
+
+  // Place on grid
+  const newGrid = addEntityToTile(state.grid, enemy.id, placementPos);
+
+  // Add to turn order based on AGI
+  const speed = calculateSpeed(enemy);
+  const newTurnEntry: TurnEntry = {
+    entityId: enemy.id,
+    speed,
+    hasActed: false,
+    isDefending: false,
+  };
+
+  // Insert into turn order (sorted by speed, descending)
+  const newTurnOrder = [...state.turnOrder, newTurnEntry].sort(
+    (a, b) => b.speed - a.speed
+  );
+
+  return {
+    ...state,
+    enemies: newEnemies,
+    grid: newGrid,
+    turnOrder: newTurnOrder,
+  };
+}
+
+/**
  * Check victory/defeat conditions
  */
 export function checkVictoryDefeat(state: CombatState): {
