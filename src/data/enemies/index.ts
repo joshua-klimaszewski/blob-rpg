@@ -18,6 +18,7 @@ import { ENEMY_THORNBLOB_FOE } from './thornblob-foe';
 import { ENEMY_GUARDBLOB_FOE } from './guardblob-foe';
 import { ENEMY_VENOMBLOB_FOE } from './venomblob-foe';
 import { ENEMY_ELDER_SLIME_FOE } from './elder-slime-foe';
+import { ENEMY_VERDANT_GUARDIAN_FOE } from './verdant-guardian-foe';
 
 const ALL_ENEMIES: EnemyDefinition[] = [
   ENEMY_SLIME,
@@ -35,6 +36,7 @@ const ALL_ENEMIES: EnemyDefinition[] = [
   ENEMY_GUARDBLOB_FOE,
   ENEMY_VENOMBLOB_FOE,
   ENEMY_ELDER_SLIME_FOE,
+  ENEMY_VERDANT_GUARDIAN_FOE,
 ];
 
 const ENEMY_REGISTRY: Record<string, EnemyDefinition> = {};

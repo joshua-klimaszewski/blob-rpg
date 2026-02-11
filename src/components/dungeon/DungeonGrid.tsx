@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { DungeonState, FloorData } from '../../types/dungeon'
-import { computeVisibleTiles, getTileVisibility, positionKey } from '../../systems/dungeon'
+import { computeVisibleTiles, getTileVisibility, positionKey, getFoeColor } from '../../systems/dungeon'
+import { usePartyStore } from '../../stores/partyStore'
 import { DungeonTile } from './DungeonTile'
 import { PlayerToken } from './PlayerToken'
 import { FoeToken } from './FoeToken'
@@ -14,6 +15,7 @@ interface DungeonGridProps {
 export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
   const gridWidth = floor.width * cellSize
   const gridHeight = floor.height * cellSize
+  const partyRoster = usePartyStore((s) => s.roster)
 
   const visibleSet = useMemo(
     () => computeVisibleTiles(dungeon.playerPosition, floor),
@@ -49,15 +51,19 @@ export function DungeonGrid({ floor, dungeon, cellSize }: DungeonGridProps) {
       {/* FOE tokens — only render on visible tiles */}
       {dungeon.foes
         .filter((foe) => visibleSet.has(positionKey(foe.position)))
-        .map((foe) => (
-          <FoeToken
-            key={foe.id}
-            cellSize={cellSize}
-            gridX={foe.position.x}
-            gridY={foe.position.y}
-            aggroState={foe.aggroState}
-          />
-        ))}
+        .map((foe) => {
+          const color = getFoeColor(foe.enemyId, partyRoster)
+          return (
+            <FoeToken
+              key={foe.id}
+              cellSize={cellSize}
+              gridX={foe.position.x}
+              gridY={foe.position.y}
+              aggroState={foe.aggroState}
+              color={color}
+            />
+          )
+        })}
 
       {/* Player token (on top) */}
       <PlayerToken

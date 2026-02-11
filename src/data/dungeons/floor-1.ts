@@ -88,7 +88,7 @@ export const FLOOR_1: FloorData = {
         { x: 4, y: 10 },
       ],
       name: 'Thornblob',
-      enemyId: 'thornblob-foe', // Unique FOE enemy (to be created)
+      enemyId: 'thornblob-foe',
       canPursue: true,
     },
     {
@@ -96,8 +96,26 @@ export const FLOOR_1: FloorData = {
       position: { x: 10, y: 7 },
       pattern: 'stationary',
       name: 'Guardblob',
-      enemyId: 'guardblob-foe', // Unique FOE enemy (to be created)
+      enemyId: 'guardblob-foe',
       canPursue: false, // Stationary FOEs don't pursue
+    },
+    {
+      id: 'foe-f1-exit-puzzle',
+      position: { x: 11, y: 11 },
+      pattern: 'patrol',
+      patrolPath: [
+        { x: 11, y: 11 }, // Top-left of loop
+        { x: 12, y: 11 }, // Top-center
+        { x: 13, y: 11 }, // Top-right
+        { x: 13, y: 12 }, // Right-center (blocks exit approach!)
+        { x: 13, y: 13 }, // Bottom-right
+        { x: 12, y: 13 }, // Bottom-center
+        { x: 11, y: 13 }, // Bottom-left
+        { x: 11, y: 12 }, // Left-center
+      ],
+      name: 'Verdant Guardian',
+      enemyId: 'verdant-guardian-foe',
+      canPursue: false, // Puzzle FOE - stays on patrol loop forever!
     },
   ],
   encounterRate: 8,

@@ -11,6 +11,8 @@ import type {
   TileVisibility,
   TurnResult,
 } from '../types/dungeon'
+import type { PartyMemberState } from '../types/combat'
+import { getEnemy } from '../data/enemies'
 
 // ---- Position utilities ----
 
@@ -592,4 +594,72 @@ export function initializeDungeonState(
     processing: false,
     exploredTiles: [...initialVisible],
   }
+}
+
+// ---- FOE Difficulty Color System ----
+
+/**
+ * Calculate total party power for FOE color determination.
+ *
+ * Power formula: sum of (level * (totalStats + HP/10)) for alive members
+ */
+export function calculatePlayerPower(party: PartyMemberState[]): number {
+  return party.reduce((total, member) => {
+    if (member.hp <= 0) return total // Skip dead members
+
+    // Sum all core stats
+    const stats = member.stats
+    const statTotal = stats.str + stats.vit + stats.int + stats.wis + stats.agi + stats.luc
+
+    // HP contributes (scaled down by 10)
+    const hpBonus = member.maxHp / 10
+
+    // Level acts as multiplier
+    const power = member.level * (statTotal + hpBonus)
+
+    return total + power
+  }, 0)
+}
+
+/**
+ * Calculate FOE power based on enemy definition.
+ *
+ * Power formula: totalStats + HP/10
+ */
+export function calculateFoePower(enemyId: string): number {
+  const enemy = getEnemy(enemyId)
+  if (!enemy) return 0
+
+  const stats = enemy.stats
+  const statTotal = stats.str + stats.vit + stats.int + stats.wis + stats.agi + stats.luc
+  const hpBonus = enemy.maxHp / 10
+
+  return statTotal + hpBonus
+}
+
+/**
+ * Determine FOE color based on party power vs FOE power ratio.
+ *
+ * - RED: FOE is 1.5x+ stronger (dangerous!)
+ * - YELLOW: FOE is 0.8-1.5x player strength (fair fight)
+ * - GREEN: FOE is <0.8x player strength (player advantage)
+ *
+ * @returns Color tier for UI display
+ */
+export function getFoeColor(
+  foeEnemyId: string,
+  party: PartyMemberState[]
+): 'red' | 'yellow' | 'green' {
+  const playerPower = calculatePlayerPower(party)
+  const foePower = calculateFoePower(foeEnemyId)
+
+  // Handle edge cases
+  if (playerPower === 0) return 'red' // No alive party = always dangerous
+  if (foePower === 0) return 'green' // Invalid FOE = always safe
+
+  const ratio = foePower / playerPower
+
+  if (ratio >= 1.5) return 'red'
+  if (ratio >= 0.8) return 'yellow'
+  return 'green'
 }
