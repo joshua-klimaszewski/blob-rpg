@@ -640,9 +640,12 @@ export function calculateFoePower(enemyId: string): number {
 /**
  * Determine FOE color based on party power vs FOE power ratio.
  *
- * - RED: FOE is 1.5x+ stronger (dangerous!)
- * - YELLOW: FOE is 0.8-1.5x player strength (fair fight)
- * - GREEN: FOE is <0.8x player strength (player advantage)
+ * - RED: FOE is 50%+ of party power (dangerous!)
+ * - YELLOW: FOE is 30-50% of party power (fair fight)
+ * - GREEN: FOE is <30% of party power (player advantage)
+ *
+ * Thresholds are tuned for early-game balance - a 120 HP FOE should feel
+ * dangerous to a level 1 party, not trivial.
  *
  * @returns Color tier for UI display
  */
@@ -659,7 +662,7 @@ export function getFoeColor(
 
   const ratio = foePower / playerPower
 
-  if (ratio >= 1.5) return 'red'
-  if (ratio >= 0.8) return 'yellow'
-  return 'green'
+  if (ratio >= 0.5) return 'red'    // FOE is 50%+ of party power
+  if (ratio >= 0.3) return 'yellow' // FOE is 30-50% of party power
+  return 'green'                     // FOE is <30% of party power
 }
