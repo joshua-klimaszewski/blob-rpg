@@ -9,16 +9,23 @@ interface DamageDisplay {
   isCrit: boolean;
 }
 
+interface LogEntry {
+  id: number;
+  message: string;
+}
+
 interface EventFeedback {
   /** Active damage number displays */
   damageDisplays: DamageDisplay[];
-  /** Latest message to show in the event log */
-  message: string | null;
+  /** Combat log entries (most recent last) */
+  log: LogEntry[];
   /** Remove a damage display by id */
   removeDamage: (id: string) => void;
 }
 
 let damageIdCounter = 0;
+let logIdCounter = 0;
+const MAX_LOG_ENTRIES = 20;
 
 function eventToMessage(event: CombatEventUnion): string | null {
   switch (event.type) {
@@ -56,7 +63,7 @@ export function useCombatEvents(): EventFeedback {
   const clearEvents = useCombatStore((s) => s.clearEvents);
 
   const [damageDisplays, setDamageDisplays] = useState<DamageDisplay[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
+  const [log, setLog] = useState<LogEntry[]>([]);
 
   useEffect(() => {
     if (lastEvents.length === 0) return;
@@ -75,29 +82,26 @@ export function useCombatEvents(): EventFeedback {
       setDamageDisplays((prev) => [...prev, ...newDamages]);
     }
 
-    // Set message from last meaningful event
-    for (let i = lastEvents.length - 1; i >= 0; i--) {
-      const msg = eventToMessage(lastEvents[i]);
+    // Accumulate all meaningful messages into the log
+    const newEntries: LogEntry[] = [];
+    for (const event of lastEvents) {
+      const msg = eventToMessage(event);
       if (msg) {
-        setMessage(msg);
-        break;
+        newEntries.push({ id: logIdCounter++, message: msg });
       }
+    }
+
+    if (newEntries.length > 0) {
+      setLog((prev) => [...prev, ...newEntries].slice(-MAX_LOG_ENTRIES));
     }
 
     // Clear store events after processing
     clearEvents();
   }, [lastEvents, clearEvents]);
 
-  // Auto-clear message after display
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 1500);
-    return () => clearTimeout(timer);
-  }, [message]);
-
   const removeDamage = useCallback((id: string) => {
     setDamageDisplays((prev) => prev.filter((d) => d.id !== id));
   }, []);
 
-  return { damageDisplays, message, removeDamage };
+  return { damageDisplays, log, removeDamage };
 }

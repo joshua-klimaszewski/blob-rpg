@@ -8,6 +8,7 @@ import { CombatHUD } from './CombatHUD';
 import { TurnOrderTimeline } from './TurnOrderTimeline';
 import { ItemMenu } from './ItemMenu';
 import { useCombatEvents } from '../../hooks/useCombatEvents';
+import { CombatLog } from './CombatLog';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { findEntity, isAlive } from '../../systems/combat';
 import { getSkill } from '../../data/classes/index';
@@ -21,7 +22,7 @@ export function CombatScreen() {
   const selectAction = useCombatStore((s) => s.selectAction);
   const processEnemyTurnAndAdvance = useCombatStore((s) => s.processEnemyTurnAndAdvance);
 
-  const { damageDisplays, message, removeDamage } = useCombatEvents();
+  const { damageDisplays, log, removeDamage } = useCombatEvents();
 
   const [selectedTile, setSelectedTile] = useState<GridPosition | null>(null);
   const [selectedAction, setSelectedAction] = useState<SelectedAction>(null);
@@ -86,18 +87,9 @@ export function CombatScreen() {
   }
 
   const handleAttackButton = useCallback(() => {
-    if (selectedAction === 'attack' && selectedTile && currentActor) {
-      selectAction({
-        actorId: currentActor.id,
-        type: 'attack',
-        targetTile: selectedTile,
-      });
-      setSelectedTile(null);
-      setSelectedAction(null);
-    } else {
-      setSelectedAction('attack');
-    }
-  }, [selectedAction, selectedTile, currentActor, selectAction]);
+    setSelectedAction('attack');
+    setSelectedTile(null);
+  }, []);
 
   const handleSkillsButton = useCallback(() => {
     setShowSkillList(true);
@@ -263,7 +255,16 @@ export function CombatScreen() {
           }
           damageDisplays={damageDisplays}
           onTileSelect={(pos) => {
-            if ((selectedAction === 'attack' || selectedAction === 'skill-targeting') && isPlayerTurn) {
+            if (!isPlayerTurn || !currentActor) return;
+            if (selectedAction === 'attack') {
+              selectAction({
+                actorId: currentActor.id,
+                type: 'attack',
+                targetTile: pos,
+              });
+              setSelectedTile(null);
+              setSelectedAction(null);
+            } else if (selectedAction === 'skill-targeting') {
               setSelectedTile(pos);
             }
           }}
@@ -307,12 +308,8 @@ export function CombatScreen() {
         </div>
       )}
 
-      {/* Event message */}
-      {message && (
-        <div className="px-4 py-1 text-center text-xs text-gray-600 border-t border-gray-200">
-          {message}
-        </div>
-      )}
+      {/* Combat Log */}
+      <CombatLog entries={log} />
 
       {/* Party Status */}
       <div className="border-t-2 border-ink px-4 py-3">
