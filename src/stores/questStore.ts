@@ -29,6 +29,9 @@ interface QuestStore {
   /** Mark explore quest complete (on entering a floor) */
   completeExploreQuest: (floorId: string) => void;
 
+  /** Update map-floor quest progress (checks for full completion) */
+  updateMapFloorProgress: (floorId: string, exploredCount: number, totalWalkable: number) => void;
+
   /** Claim rewards for a completed quest (returns gold/xp/equipment, or null if not claimable) */
   claimQuest: (definitionId: string) => { gold: number; xp: number; equipmentId?: string } | null;
 
@@ -115,6 +118,25 @@ export const useQuestStore = create<QuestStore>((set, get) => ({
         if (def.objective.floorId !== floorId) return quest;
 
         return { ...quest, progress: 1, completed: true };
+      }),
+    }));
+  },
+
+  updateMapFloorProgress: (floorId, exploredCount, totalWalkable) => {
+    set((state) => ({
+      activeQuests: state.activeQuests.map((quest) => {
+        if (quest.completed || quest.claimed) return quest;
+        const def = getQuest(quest.definitionId);
+        if (!def || def.objective.type !== 'map-floor') return quest;
+        if (def.objective.floorId !== floorId) return quest;
+
+        // Check if floor is fully mapped (100% completion)
+        const isComplete = exploredCount >= totalWalkable;
+        return {
+          ...quest,
+          progress: exploredCount,
+          completed: isComplete,
+        };
       }),
     }));
   },

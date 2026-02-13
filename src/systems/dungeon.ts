@@ -163,6 +163,19 @@ export function isWalkable(floor: FloorData, pos: Position): boolean {
   return tile.type !== 'wall'
 }
 
+/** Count total walkable tiles on a floor (for map completion tracking) */
+export function countWalkableTiles(floor: FloorData): number {
+  let count = 0
+  for (let y = 0; y < floor.height; y++) {
+    for (let x = 0; x < floor.width; x++) {
+      if (isWalkable(floor, { x, y })) {
+        count++
+      }
+    }
+  }
+  return count
+}
+
 /** Check if movement from `from` in `dir` is blocked by a wall edge on the source tile */
 export function isWallBlocked(
   floor: FloorData,

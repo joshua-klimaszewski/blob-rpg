@@ -56,7 +56,8 @@ export interface ShopRecipe {
 export type QuestObjective =
   | { type: 'kill'; enemyId: string; count: number }
   | { type: 'gather'; materialId: string; count: number }
-  | { type: 'explore'; floorId: string };
+  | { type: 'explore'; floorId: string }
+  | { type: 'map-floor'; floorId: string };
 
 /** Quest reward definition */
 export interface QuestReward {
