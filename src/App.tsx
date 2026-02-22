@@ -10,11 +10,12 @@ import { GuildScreen } from './components/town/GuildScreen'
 import { TitleScreen } from './components/ui/TitleScreen'
 import { GuildNameScreen } from './components/ui/GuildNameScreen'
 import { LoadGameScreen } from './components/ui/LoadGameScreen'
-import { SaveGameScreen } from './components/town/SaveGameScreen'
 import { HowToPlayScreen } from './components/help/HowToPlayScreen'
 import { InventoryScreen } from './components/town/InventoryScreen'
 import { DungeonSelectScreen } from './components/dungeon/DungeonSelectScreen'
 import { HelpOverlay } from './components/help/HelpOverlay'
+import { AutoSaveIndicator } from './components/ui/AutoSaveIndicator'
+import { useAutoSave } from './hooks/useAutoSave'
 
 const screens = {
   title: TitleScreen,
@@ -29,7 +30,6 @@ const screens = {
   guild: GuildScreen,
   'guild-name': GuildNameScreen,
   'load-game': LoadGameScreen,
-  'save-game': SaveGameScreen,
   'how-to-play': HowToPlayScreen,
   inventory: InventoryScreen,
 } as const
@@ -37,6 +37,7 @@ const screens = {
 export function App() {
   const screen = useGameStore((s) => s.screen)
   const helpOpen = useGameStore((s) => s.helpOpen)
+  useAutoSave()
   const Screen = screens[screen as keyof typeof screens]
 
   if (!Screen) {
@@ -52,6 +53,7 @@ export function App() {
   return (
     <div className="relative min-h-dvh bg-paper text-ink font-mono">
       <Screen />
+      <AutoSaveIndicator />
       {helpOpen && <HelpOverlay />}
     </div>
   )

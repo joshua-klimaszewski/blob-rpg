@@ -118,3 +118,4 @@ export interface SuspendSaveData {
 export const MAX_GUILDS = 3;
 export const MAX_SLOTS_PER_GUILD = 3;
 export const SAVE_VERSION = 2;
+export const AUTOSAVE_SLOT_ID = 'autosave';

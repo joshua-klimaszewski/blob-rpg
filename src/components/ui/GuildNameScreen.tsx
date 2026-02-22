@@ -5,7 +5,7 @@ import { usePartyStore } from '../../stores/partyStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import { useQuestStore } from '../../stores/questStore';
 import { createGuild } from '../../systems/save';
-import { resetAllStores } from '../../stores/saveActions';
+import { resetAllStores, autoSaveTown } from '../../stores/saveActions';
 
 export function GuildNameScreen() {
   const [name, setName] = useState('');
@@ -30,6 +30,9 @@ export function GuildNameScreen() {
     useQuestStore.setState({ activeQuests: [] });
 
     setScreen('town');
+
+    // Initial auto-save so new games are immediately persisted
+    autoSaveTown();
   };
 
   return (
